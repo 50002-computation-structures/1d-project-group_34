@@ -5,20 +5,18 @@ module boolean (
     output bool[16]
   ) {
 
-  // declaration of modules utilised in boolean unit 
+  // declares a 16 bit array of 4-to-1 multiplexers (mux_4_16) by using the module mux_4
   mux_4 mux_4_16[16];
   
   always {
-    // create 32 copies of ALUFN signal as input to each mux_4 unit 
-    // the double curly brackets are intentional because
-    // we are creating 2D array: 32 by 4 bits
+    // create 32 copies of the 4-bit ALUFN signal (alufn_signal[3:0]) to provide inputs to each multiplexer
+    // assign input ‘a’ to input s0 of the multiplexers
+    // assign input 'b' to input s1 of the multiplexers
+    // Output of the multiplexers is assigned to the module’s output (bool)
     mux_4_16.in = 16x{{alufn_signal[3:0]}};    
-    mux_4_16.s0 = a;
-    mux_4_16.s1 = b;
-    bool = mux_4_16.out;
+    mux_4_16.s0 = a; 
+    mux_4_16.s1 = b; 
+    bool = mux_4_16.out; 
     }
-    // the rest of boolean.luc body 
-    // default values to silence errors  
-    
  }
 
