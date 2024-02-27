@@ -1,3 +1,8 @@
+//z is input signal indicating zero result
+//v is input signal indicating operation overflow
+//n is input signal indicating negative value
+//output cmp indicates comparison result 
+
 module compare (
     input z,
     input v,
@@ -5,7 +10,7 @@ module compare (
     input alufn_signal[6],
     output cmp
   ) {
-  
+  //internal signal that holds the result of n XOR v
   sig nxorv;
 
   
@@ -13,6 +18,7 @@ module compare (
     nxorv = n ^ v;
     case (alufn_signal[2:1]) {
       default: cmp = 0;
+
       b01: cmp = z;
       b10: cmp = nxorv;
       b11: cmp = z | nxorv;
