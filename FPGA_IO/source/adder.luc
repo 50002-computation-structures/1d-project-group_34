@@ -1,3 +1,6 @@
+// adder takes 16 bits input for a and 16 bits input for b, returns 16 bit output
+//returns one bit outputs z,v,n
+
 module adder (
     input a[16],
     input b[16],
@@ -8,15 +11,26 @@ module adder (
     output n
   ) {
 
+//instantiate rca module that does the 16 bit signed addition/substraction
+//instantiate signal xb[16] that holds 16bits representing b or -b based on alufn_signal
+
   rca rca;
   sig xb[16];
   
+//assignes rca a,b,ci inputs
+//when alufn_signal[0] is 0, the xor of b with it gives b (addition)
+//when alufn_signal[0] is 1 (substraction), the xor of b with 1 gives the ones complement of b and input of alufn_signal[0] to rca.ci does the twos complement
+
   always {
     xb[15:0] = b^ 16x{alufn_signal[0]};
     rca.a = a;
     rca.b = xb;
     rca.ci = alufn_signal[0];
-    
+
+//z checks if 16 bits outputs all zero nors all pair of output and nors the outputs of the pairs(since only zero zero returns 1)
+//v checks if overflow occurs  when a[15],xb[15],rca.s[15] 110 or 001
+//n checks if 16 bit output is negative (when most significant bit is 1)
+
     out = rca.s;
     z = ~|rca.s;
     v = (a[15] & xb[15] & !rca.s[15]) | (!a[15] & !xb[15] & rca.s[15]);
@@ -25,4 +39,3 @@ module adder (
 }
 
 // Checking Comment-ability of code here 
-//like this?
