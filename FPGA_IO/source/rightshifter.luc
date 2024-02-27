@@ -1,0 +1,32 @@
+module rightshifter #(
+//parameter declaration to be set during module instantiation
+//default value given is 8
+    SHIFT = 8 : SHIFT > -1 & SHIFT < 16
+ )(
+    input a[16],
+    input shift,
+    input pad,
+    output out[16]
+  ) {
+  // module declarations
+  // declare your mux_2 (16 of them)
+  mux_2 mux_2_16[16];
+  // other useful variables, e.g: shifted_bits[16] 
+  sig shifted_bits[16];
+  var i;
+ 
+  always {
+    // assign value to shifted_bits[16] depending on the value of SHIFT
+    shifted_bits = c{SHIFTx{pad}, a[15:SHIFT]};
+    // connect the selector of each mux_2 with shift 
+    mux_2_16.s0 = 16x{shift};
+    // use a for-loop to: 
+    // connect input[0][i] of each mux_2 with a[i]
+    // connect input[1][i] of each mux_2 with the shiftedbits[i]xs
+    for (i=0; i<16; i++) {
+      mux_2_16.in[i][0] = a[i];
+      mux_2_16.in[i][1] = shifted_bits[i] ;
+    }
+    out = mux_2_16.out;
+  }
+}
