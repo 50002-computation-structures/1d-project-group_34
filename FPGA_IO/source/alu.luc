@@ -7,7 +7,7 @@ module alu (
     output v,
     output n
   ) {
-    
+
   // declaring instances of each module
   adder adder;
   boolean boolean;
@@ -46,20 +46,15 @@ module alu (
     cmp = c{15x{b0}, compare.cmp};
 
     for (i=0; i<16; i++){
-      /*
-      mux_2.s0[i] = alufn_signal[1];
-      mux_2.in[i][0] = adder.out[i];
-      mux_2.in[i][1] = multiplier.mul[i];
-      */
-      
+      //using the bits at alufn_signal[0] and alufn_signal[0] to decide which operation to carry out
       mux_4_1.s0[i] = alufn_signal[0];
       mux_4_1.s1[i] = alufn_signal[1];
       mux_4_1.in[i][0] = adder.out[i];
-      mux_4_1.in[i][1] = adder.out[i];
+      mux_4_1.in[i][1] = adder.out[i]; //subtract
       mux_4_1.in[i][2] = multiplier.mul[i]; 
       mux_4_1.in[i][3] = divider.d[i];
       
-      
+      //using the bits at alufn_signal[4] and alufn_signal[5] to decide which operation to carry out
       mux_4_2.s1[i] = alufn_signal[5];
       mux_4_2.s0[i] = alufn_signal[4];
       mux_4_2.in[i][0] = mux_4_1.out[i];  
