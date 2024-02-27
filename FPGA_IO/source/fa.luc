@@ -1,3 +1,5 @@
+//module fa reprsents one full adder, takes in  one bit input for a b and carry in respectively
+// returns one bit output for carry out and sum respectively
 module fa (
     input a,  
     input b,  
@@ -7,6 +9,8 @@ module fa (
   ) {
 
   sig a_xor_b;
+
+//assigns sum and carry out output
   always {
     a_xor_b = a^b;
     s = a_xor_b ^ ci;
