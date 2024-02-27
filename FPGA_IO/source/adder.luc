@@ -23,3 +23,5 @@ module adder (
     n = rca.s[15];
   }
 }
+
+// Checking Comment-ability of code here 
