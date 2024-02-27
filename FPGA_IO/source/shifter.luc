@@ -7,7 +7,7 @@ module shifter (
 var i;
 sig padA;
   
-  //variable bit left shifter (up till 16 bits)
+  //variable bit left shifter (up till 16 bits) by using shifting 8->4->2->1
   leftshifter shifter8L(#SHIFT(8), .a(a), .shift(b[3]), .pad(b0));   
   leftshifter shifter4L(#SHIFT(4), .a(shifter8L.out), .shift(b[2]), .pad(b0)); 
   leftshifter shifter2L(#SHIFT(2), .a(shifter4L.out), .shift(b[1]), .pad(b0)); 
@@ -23,6 +23,7 @@ sig padA;
   
   mux_2 mux_2[16];        
   always {
+    //  Performing AND operation with alufn_sig and MSB --> able to select which pad b0 or b1 to use
     padA = alufn_signal[1] & a[15];
     shifter8R.pad = padA;
     shifter4R.pad = padA;
