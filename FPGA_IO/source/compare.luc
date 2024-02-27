@@ -1,6 +1,7 @@
 //z is input signal indicating zero result
 //v is input signal indicating operation overflow
 //n is input signal indicating negative value
+// alufn_signal indicates ALU function 
 //output cmp indicates comparison result 
 
 module compare (
@@ -13,12 +14,14 @@ module compare (
   //internal signal that holds the result of n XOR v
   sig nxorv;
 
-  
+//if alufn_signal value is 01 then cmp =z
+//if alufn_signal value is 10 then cmp=nxorv
+//if alufn_signal value is 11 then cmp=z OR nxorv
+
   always {
-    nxorv = n ^ v;
+    nxorv = n ^ v;    //calculating nxorv
     case (alufn_signal[2:1]) {
       default: cmp = 0;
-
       b01: cmp = z;
       b10: cmp = nxorv;
       b11: cmp = z | nxorv;
