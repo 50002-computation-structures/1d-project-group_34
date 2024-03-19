@@ -30,11 +30,11 @@ module game_CU (
   
   .clk(clk){
     fsm game_fsm={
-      CHECK_START,
       CHECK_MAP_COUNT,
       BRANCH_MAP,
       LOAD_MAP_0,
       ADD_1_TO_MAP,
+      FLASH_MAP,
 
       IDLE,
 
@@ -89,165 +89,86 @@ module game_CU (
     asel = 0; 
     bsel = 0;
     we_regfile = 0;
-    regfile_write_address = 1111;
     regfile_read_address_a = 0000;
     regfile_read_address_b = 0000;
-    alu_out_sel = 0;
+    regfile_write_address_c = 1111;
+    wdsel = 0;
     
     debug = b0000;
     
-    decimal_counter_increase = 0;
-    decimal_counter_rst = 0;
     
     if (rst){
-        game_fsm.d = game_fsm.START_SET_TIMER;
-        decimal_counter_rst = 1;
+        game_fsm.d = game_fsm.CHECK_MAP_COUNT;
     }
     else{
       
     case(game_fsm.q){
     
-      game_fsm.START_SET_TIMER: 
-        alufn = b011010;                             //A
-        asel = b11;                                  //30
-        we_regfile = 1; 
-        regfile_write_address = b1000;                     //timer reg
-        regfile_read_address_b = b1000;              //direct read (temp reg)
-        //if counter is set
-        if (regfile_datain[4]){                      //direct read in
-          game_fsm.d = game_fsm.INC_COUNTER;
-        }
-        else{
-          game_fsm.d =  game_fsm.START_SET_TIMER;
-        }
-        
-      game_fsm.INC_COUNTER:
-        //set output and next state
-        alufn = b000000;                             //ADD
-        regfile_read_address_a = b0111;              //counter reg
-        bsel = b01;                                  //constant 1 
-        asel = b00;                                  
-        we_regfile = 1;
-        regfile_write_address = b0111;                     //counter reg 
-        decimal_counter_increase = 1;
-        game_fsm.d = game_fsm.IDLE;
-      
-      game_fsm.CHECK_P1BUTTONCOUNT:
-        alufn = b110101;                             //CMPLT
-        regfile_read_address_a = b0010;              //p1 button count reg
-        bsel = b11;                                  //constant 3
+      game_fsm.CHECK_MAP_COUNT:
+        alufn = CMPEQ;
         asel = b00; 
-        we_regfile = 1;
-        regfile_write_address = b1111;                     //temp reg
-        game_fsm.d = game_fsm.BRANCH_P1BUTTON;
-        
-      game_fsm.BRANCH_P1BUTTON:
-        regfile_read_address_b = b1111;              //temp reg 
-        if (regfile_datain[0]){                      //direct read in
-          game_fsm.d = game_fsm.INCREASE_P1SCORE;
-        }
-        else{
-          game_fsm.d = game_fsm.IDLE;
-        }
-               
-      game_fsm.INCREASE_P1SCORE:
-         alufn = b000000;                           //ADD
-         regfile_read_address_b = b0000;            //P1 score reg 
-         regfile_read_address_a = b0111;            //counter reg 
-         bsel = b00;                                //P1 score reg 
-         asel = b00;                                //counter  reg
-         we_regfile = 1;                           
-         regfile_write_address = b0000;                   //P1 score reg
-         game_fsm.d = game_fsm.INCREASE_P1BUTTONCOUNT;
+        bsel = b01;
+        we_regfile = b1;
+        regfile_read_address_a = 0110;
+        regfile_read_address_b = --;
+        regfile_write_address_c = 1111;
+        wdsel = b00;
 
-      game_fsm.INCREASE_P1BUTTONCOUNT:
-        alufn = b000000;
-        regfile_read_address_b = b0010;
-        bsel = b00; // p1's button
-        asel = b01; // plus 1 
-        we_regfile = 1; 
-        regfile_write_address = b0010;
-        game_fsm.d = game_fsm.RESET_COUNTER;
-        
-      game_fsm.CHECK_P2BUTTONCOUNT:
-        alufn = b110101;                           //CMPLT
-        regfile_read_address_a = b0011;            //P2 button count reg
-        bsel = b11;                                //constant 3
-        asel = b00; 
-        we_regfile = 1;
-        regfile_write_address = b1111;                   //temp reg
-        game_fsm.d = game_fsm.BRANCH_P2BUTTON; 
-      
-      game_fsm.BRANCH_P2BUTTON:
-        regfile_read_address_b = b1111;            //temp reg
-        if (regfile_datain[0]){                    //direct read
-          game_fsm.d = game_fsm.INCREASE_P2SCORE;
+      game_fsm.BRANCH_MAP:
+        we_regfile = b0;
+        regfile_read_address_b = 1111;
+        if (regfile_datain[0]){                      //if rb == 1
+          game_fsm.d = game_fsm.LOAD_MAP_0;
         }
         else{
-          game_fsm.d = game_fsm.IDLE;
+          game_fsm.d = game_fsm.ADD_1_TO_MAP;
         }
-        
-        
-            
-      game_fsm.RESET_COUNTER:
-        alu_out_sel = b11;                       //constant 0
-        we_regfile = 1;
-        regfile_write_address = b0111;                 //counter reg
-        decimal_counter_rst = 1;
-        decimal_counter_increase = 0;
-        game_fsm.d = game_fsm.CHECK_P1P2BUTTONCOUNT; 
-               
-      
-      game_fsm.CHECK_DRAW:
-        alufn = b110011; //CMPEQ
-        regfile_read_address_a = b0000;      //P1 score reg
-        regfile_read_address_b = b0001;      //P2 score reg
-        asel = b00;
-        bsel = b00;
-        we_regfile = 1;
-        regfile_write_address = b1111;             //temp reg
-        game_fsm.d = game_fsm.BRANCH_DRAW;
-      
-      game_fsm.BRANCH_DRAW:
-        regfile_read_address_b = b1111;      //temp reg
-        if (regfile_datain[0]){
-          //its draw
-          alu_out_sel = b10;                //draw signal
-          we_regfile = 1;
-          regfile_write_address = b0000;          //P1 score reg
-          game_fsm.d = game_fsm.DRAW;
-          }
+
+      game_fsm.LOAD_MAP_0:
+        alufn = ;
+        asel = ; 
+        bsel = ;
+        we_regfile = ;
+        regfile_read_address_a = ;
+        regfile_read_address_b = ;
+        regfile_write_address_c = ;
+        wdsel = ;
+
+      game_fsm.ADD_1_TO_MAP:
+        alufn = ;
+        asel = ; 
+        bsel = ;
+        we_regfile = ;
+        regfile_read_address_a = ;
+        regfile_read_address_b = ;
+        regfile_write_address_c = ;
+        wdsel = ;
+
+      game_fsm.FLASH_MAP:
+        alufn = ;
+        asel = ; 
+        bsel = ;
+        we_regfile = ;
+        regfile_read_address_a = ;
+        regfile_read_address_b = ;
+        regfile_write_address_c = ;
+        wdsel = ;
+
+      game_fsm.IDLE:
+        if (decrease_timer){
+          game_fsm.d = game_fsm.CHECK_GAMETIMER;
+        }
+        else if (p1_button_up){
+            game_fsm.d = game_fsm.CHECK_P1_UP_BOUNDARY;
+        }
+        else if (p2_button_up){
+            game_fsm.d = game_fsm.CHECK_P2_UP_BOUNDARY;
+        }
         else{
-          game_fsm.d = game_fsm.CHECK_WINNER;
-          }
-      
-      game_fsm.DRAW:
-        alu_out_sel = b10;                //draw signal
-        we_regfile = 1; 
-        regfile_write_address = b0001;          //P2 score reg
-        game_fsm.d = game_fsm.GAMEOVER;  
-              
-      game_fsm.CHECK_WINNER:
-        alufn = b110101;                 //CMPLT
-        regfile_read_address_a = b0000;  //P1 score reg 
-        regfile_read_address_b = b0001;  //P2 score reg
-        asel = b00;
-        bsel = b00;
-        we_regfile = 1;
-        regfile_write_address = b1111;         //temp reg
-        game_fsm.d = game_fsm.BRANCH_WINNER;
-          
-      game_fsm.BRANCH_WINNER:
-        regfile_read_address_b = b1111; //temp reg
-        if (regfile_datain[0]){
-            //P2 Wins
-            game_fsm.d = game_fsm.P2WINS; 
-          }
-        else{
-            //P1 Wins
-            game_fsm.d = game_fsm.P1WINS; 
-          }
-        
+            game_fsm.d = game_fsm.IDLE;
+        }
+
+
           
       game_fsm.P2WINS:
          we_regfile = 1;
@@ -278,22 +199,7 @@ module game_CU (
         debug = b1111;
         game_fsm.d = game_fsm.GAMEOVER;           
         
-      game_fsm.IDLE:
-        if (decrease_timer){
-          game_fsm.d = game_fsm.CHECK_GAMETIMER;
-        }
-        else if (increase_counter && ~p1_button && ~p2_button){
-            game_fsm.d = game_fsm.INC_COUNTER;
-        }
-        else if (p1_button && ~p2_button){
-            game_fsm.d = game_fsm.CHECK_P1BUTTONCOUNT;
-        }
-        else if (p2_button && ~p1_button){
-            game_fsm.d = game_fsm.CHECK_P2BUTTONCOUNT;
-        }
-        else{
-            game_fsm.d = game_fsm.IDLE;
-        }
+      
 
 
       }
