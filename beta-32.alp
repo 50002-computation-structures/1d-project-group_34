@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="beta-32" board="Alchitry Au" language="Lucid" version="3">
+  <files>
+    <src>control_unit.luc</src>
+    <component>pipeline.luc</component>
+    <src>motherboard.luc</src>
+    <component>counter.luc</component>
+    <src>fa.luc</src>
+    <src>shifter.luc</src>
+    <src>memory_unit.luc</src>
+    <src>seven_seg.luc</src>
+    <src>beta_cpu.luc</src>
+    <src>divider.luc</src>
+    <src>alu.luc</src>
+    <src>rightshifter.luc</src>
+    <src>mux_2.luc</src>
+    <src>pc_unit.luc</src>
+    <component>reset_conditioner.luc</component>
+    <component>button_conditioner.luc</component>
+    <src>rca.luc</src>
+    <component>simple_dual_ram.v</component>
+    <src top="true">au_top.luc</src>
+    <src>multi_seven_seg.luc</src>
+    <src>multiplier.luc</src>
+    <src>instruction_rom.luc</src>
+    <src>boolean.luc</src>
+    <src>leftshifter.luc</src>
+    <component>decoder.luc</component>
+    <src>mux_4.luc</src>
+    <component>simple_ram.v</component>
+    <src>compare.luc</src>
+    <component>edge_detector.luc</component>
+    <src>regfile_memory.luc</src>
+    <src>adder.luc</src>
+    <src>regfile_unit.luc</src>
+    <constraint lib="true">alchitry.acf</constraint>
+    <constraint lib="true">io.acf</constraint>
+    <constraint lib="true">au.xdc</constraint>
+  </files>
+</project>
