@@ -1,0 +1,39 @@
+module shifter (
+    input a[32],
+    input b[5],
+    input alufn_signal[6],
+    output shift[32]
+  ) {
+var i;
+sig padA;
+  
+  //variable bit left shifter (up till 32 bits)
+  leftshifter shifter16L(#SHIFT(16), .a(a), .shift(b[4]), .pad(b0));
+  leftshifter shifter8L(#SHIFT(8), .a(shifter16L.out), .shift(b[3]), .pad(b0));    
+  leftshifter shifter4L(#SHIFT(4), .a(shifter8L.out), .shift(b[2]), .pad(b0)); 
+  leftshifter shifter2L(#SHIFT(2), .a(shifter4L.out), .shift(b[1]), .pad(b0)); 
+  leftshifter shifter1L(#SHIFT(1), .a(shifter2L.out), .shift(b[0]), .pad(b0));    
+  
+  //variable bit right shifter (up till 32 bits)
+  rightshifter shifter16R(#SHIFT(16), .a(a), .shift(b[4]), .pad(b0));
+  rightshifter shifter8R(#SHIFT(8), .a(shifter16R.out), .shift(b[3]));
+  rightshifter shifter4R(#SHIFT(4), .a(shifter8R.out), .shift(b[2]));
+  rightshifter shifter2R(#SHIFT(2), .a(shifter4R.out), .shift(b[1]));
+  rightshifter shifter1R(#SHIFT(1), .a(shifter2R.out), .shift(b[0]));
+
+  
+  mux_2 mux_2[32];        
+  always {
+    padA = alufn_signal[1] & a[31];
+    shifter8R.pad = padA;
+    shifter4R.pad = padA;
+    shifter2R.pad = padA;
+    shifter1R.pad = padA;
+    for (i=0; i<32; i++){
+    mux_2.in[i][0] = shifter1L.out[i];
+    mux_2.in[i][1] = shifter1R.out[i];
+  }
+    mux_2.s0 = 32x{alufn_signal[0]};
+    shift = mux_2.out;
+  }
+}

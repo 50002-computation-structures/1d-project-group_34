@@ -1,0 +1,70 @@
+module multiplier (
+    input a[32],
+    input b[32],
+    output mul[32]
+  ) {
+  
+  fa fa[120]; // we need 496 FAs to implement a 32 bit multiplier  
+  var i; // row variable
+  var j; // col variable
+  var current_row_fa_index;
+  var previous_row_fa_index;
+  
+
+  always {
+    // default values to silence errors 
+    mul = 0;
+    
+    // LSB out 
+    mul[0] = a[0] & b[0];
+    
+    // first row is just an AND gate so we dont need to do anything
+    
+    // the second row of FA (with b[1]), loop over the columns
+    for (j = 0; j < 31; j++){
+      fa.a[j] = b[1] & a[j];
+      fa.b[j] = b[0] & a[j+1];
+      if (j == 0){
+        fa.ci[j] = b0; // binary 0
+      } 
+      else  {
+        // when j is 1 onwards
+        fa.ci[j] = fa.co[j-1];
+      }
+    }
+    // output mul[1]
+    mul[1] = fa.s[0];
+    
+    // initialize the indexes
+    current_row_fa_index = 31;
+    previous_row_fa_index = 0;
+    
+    for (i = 2; i < 15; i++){
+      // loop over the columns
+      // we have less columns as we advance rows
+      for (j = 0; j<32-i; j++){
+        fa.a[current_row_fa_index+j] = a[j] & b[i];
+        fa.b[current_row_fa_index+j] = fa.s[previous_row_fa_index+j+1];
+        if (j == 0){
+          fa.ci[current_row_fa_index+j] = b0;   // binary 0
+        }
+        else {
+          fa.ci[current_row_fa_index+j] = fa.co[current_row_fa_index+j-1];
+        }
+      }
+      // update the current row and previous row current_row_fa_index
+      previous_row_fa_index = current_row_fa_index;
+      current_row_fa_index = current_row_fa_index+j;
+      // set the output bits
+      mul[i] = fa.s[previous_row_fa_index];
+    }
+      
+      // do the last FA for fun, actually can just put in the for-loop above
+    
+    fa.a[119] = a[0] & b[15];
+    fa.b[119] = fa.s[118];
+    fa.ci[119] = b0;
+    mul[15] = fa.s[119];
+  }
+
+

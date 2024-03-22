@@ -1,0 +1,88 @@
+module pc_unit (
+    input clk,  // clock
+    input rst,  // reset
+    input slowclk, // slowclock to advance pc
+    input id[16],
+    input pcsel[3],
+    input reg_data_1[32],
+    output pc_4[32],
+    output pc_4_sxtc[32],
+    output pcsel_out[32], // for debug only, does not exist in pc_unit
+    output ia[32]
+  ) {
+
+  dff pc[32](#INIT(0),.clk(clk)); // PC Register
+
+  sig pcsel1_out_sig[32];
+  sig pcsel_out_sig[32];
+  
+  sig pc_4_sxtc_32_sig[32]; 
+  sig pc_4_sxtc_sig[32]; 
+  sig pc_4_sig[32];
+  
+  sig ia31[1];
+
+  
+  mux_2 jt_mux;
+  
+  
+  always {
+  
+    // initial setups to silence output compilation errors
+    pc_4_sig = 0;
+    pc_4_sxtc_sig = 0;
+    pcsel_out_sig = 0;
+    
+    ia31 = pc.q[31];
+    jt_mux.s0 = ia31;
+    jt_mux.in[1] = reg_data_1[31];
+    jt_mux.in[0] = b0;
+    
+    
+    // increment pc by 4
+    pc_4_sig = c{pc.q[31], pc.q[30:0] + 4};            
+    
+    // TASK 4
+    // shift-and-add pc by 4
+    pc_4_sxtc_sig = c{17x{id[15]}, id[14:0]}; // preserve the supervisor bit
+    pc_4_sxtc_32_sig = pc_4_sig + c{pc_4_sxtc_sig, b00}; //implement intermediary signal: pc + 4 + SXT(C)
+    
+    
+    // TASK 1 
+    // PCSEL mux 
+    case (pcsel[1:0]) {
+      b00: pcsel1_out_sig[31:0] = c{pc_4_sig[31:0], b00};
+      b01: pcsel1_out_sig[31:0] = c{pc_4_sxtc_sig[31:0], b00};
+      b10: pcsel1_out_sig[31:0] = c{jt_mux.out, reg_data_1[30:2], b00};
+      b11: pcsel1_out_sig[31:0] = h80000004;
+      default:
+        pcsel1_out_sig = pc.q;
+        }
+     case (pcsel[2]) {
+      b0: pcsel_out_sig[31:0] = pcsel1_out_sig;
+      b1: pcsel_out_sig[31:0] = h80000008;
+      default:
+        pcsel_out_sig = pc.q;
+        }
+    
+
+
+    // Task 2
+    // RESET mux 
+    case (rst) {
+      b0: pc.d[31:0] = pcsel_out_sig;
+      b1: pc.d[31:0] = h80000000;
+      default:
+        pc.d = pc.q;
+        }
+
+    
+    // output connections
+    ia = pc.q;
+    pc_4 =  pc_4_sig;
+    pc_4_sxtc = pc_4_sxtc_sig;
+    pcsel_out = pcsel_out_sig;
+    
+    
+  }
+}
