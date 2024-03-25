@@ -20,7 +20,12 @@ module pc_unit (
   sig pc_4_sxtc_sig[32]; 
   sig pc_4_sig[32];
   
+  sig pc_4_into_full_adder_2[32];
+  sig pc_4_full_adder_2_out[32];
+  sig pcsel_out_final[32];
+  
   sig ia31[1];
+  
 
   
   mux_2 jt_mux;
@@ -44,17 +49,30 @@ module pc_unit (
     
     // TASK 4
     // shift-and-add pc by 4
-    pc_4_sxtc_sig = c{17x{id[15]}, id[14:0]}; // preserve the supervisor bit
-    pc_4_sxtc_32_sig = pc_4_sig + c{pc_4_sxtc_sig, b00}; //implement intermediary signal: pc + 4 + SXT(C)
+    //pc_4_sxtc_sig = c{17x{id[15]}, id[15:0]}; // preserve the supervisor bit
+    //pc_4_sxtc_32_sig = pc_4_sig + c{pc_4_sxtc_sig, b00}; //implement intermediary signal: pc + 4 + SXT(C)
+
+    pc_4_sxtc_sig = c{ia31, pc_4_sig[30:2], b00};
+    pc_4_into_full_adder_2 = c{14x{id[15]}, id[15:0], b00};
+    pc_4_full_adder_2_out = pc_4_sig + pc_4_into_full_adder_2;
+    pc_4_sxtc_32_sig = c{ia31, pc_4_into_full_adder_2[30:2], b00};
+    
+    /*
+    pc_4_sxtc_sig = c{ia31, pc_4_sig[30:2], b00};
+    
+    pc_4_sxtc_32_sig = c{14x{id[15]}, id[15:0], b00}; //just sign extending c
+    
+    pc_4_full_adder_2_out = pc_4_sxtc_sig + pc_4_sxtc_32_sig;*/
     
     
     // TASK 1 
     // PCSEL mux 
     case (pcsel[1:0]) {
-      b00: pcsel1_out_sig[31:0] = c{pc_4_sig[31:0], b00};
-      b01: pcsel1_out_sig[31:0] = c{pc_4_sxtc_sig[31:0], b00};
+      b00: pcsel1_out_sig[31:0] = pc_4_sig;
+      b01: pcsel1_out_sig[31:0] = c{pc_4_full_adder_2_out[30:2], b00};
       b10: pcsel1_out_sig[31:0] = c{jt_mux.out, reg_data_1[30:2], b00};
       b11: pcsel1_out_sig[31:0] = h80000004;
+      /*c{pc_4_sig[30:2], b00}*/
       default:
         pcsel1_out_sig = pc.q;
         }
@@ -64,25 +82,43 @@ module pc_unit (
       default:
         pcsel_out_sig = pc.q;
         }
-    
 
-
+        
     // Task 2
     // RESET mux 
-    case (rst) {
-      b0: pc.d[31:0] = pcsel_out_sig;
-      b1: pc.d[31:0] = h80000000;
+    /*if(slowclk) {
+    pc.d[31:0] = pcsel_out_sig[31:0];
+      }
+    else{pc.d=pc.q;}*/
+       
+    if(slowclk) {
+    pcsel_out_final[31:0] = pcsel_out_sig[31:0];
+      }
+    else{pcsel_out_final=pc.q;}
+    
+      /*case (rst) {
+      b0: pc.d[31:0]= pcsel_out_sig[31:0];
+      b1: pc.d[31:0] = 32h80000000;
       default:
-        pc.d = pc.q;
+        pc.d = pcsel_out_sig[31:0];
+        /*pcsel_out_sig[31:0]
+        }*/
+      case (rst) {
+      b0: pc.d[31:0]= pcsel_out_final[31:0];
+      b1: pc.d[31:0] = 32h80000000;
+      default:
+        pc.d = pcsel_out_final[31:0];
+        /*pcsel_out_sig[31:0]*/
         }
 
-    
+
     // output connections
     ia = pc.q;
     pc_4 =  pc_4_sig;
     pc_4_sxtc = pc_4_sxtc_sig;
-    pcsel_out = pcsel_out_sig;
+    pcsel_out = pcsel_out_sig; //debug
     
-    
+
+
   }
 }

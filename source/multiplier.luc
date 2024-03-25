@@ -4,7 +4,7 @@ module multiplier (
     output mul[32]
   ) {
   
-  fa fa[120]; // we need 496 FAs to implement a 32 bit multiplier  
+  fa fa[496]; // we need 496 FAs to implement a 32 bit multiplier  
   var i; // row variable
   var j; // col variable
   var current_row_fa_index;
@@ -39,7 +39,7 @@ module multiplier (
     current_row_fa_index = 31;
     previous_row_fa_index = 0;
     
-    for (i = 2; i < 15; i++){
+    for (i = 2; i < 31; i++){
       // loop over the columns
       // we have less columns as we advance rows
       for (j = 0; j<32-i; j++){
@@ -61,10 +61,10 @@ module multiplier (
       
       // do the last FA for fun, actually can just put in the for-loop above
     
-    fa.a[119] = a[0] & b[15];
-    fa.b[119] = fa.s[118];
-    fa.ci[119] = b0;
-    mul[15] = fa.s[119];
+    fa.a[495] = a[0] & b[31];
+    fa.b[495] = fa.s[494];
+    fa.ci[495] = b0;
+    mul[31] = fa.s[495];
   }
 
 
