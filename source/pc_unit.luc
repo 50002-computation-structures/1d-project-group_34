@@ -28,7 +28,7 @@ module pc_unit (
   
 
   
-  mux_2 jt_mux;
+  mux_2 jt_mux; //mux for PCSEL's b10 input
   
   
   always {
@@ -38,6 +38,7 @@ module pc_unit (
     pc_4_sxtc_sig = 0;
     pcsel_out_sig = 0;
     
+    //inputs for jt_mux which maps to b10 of PCSEL Mux
     ia31 = pc.q[31];
     jt_mux.s0 = ia31;
     jt_mux.in[1] = reg_data_1[31];
