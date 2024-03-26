@@ -52,11 +52,12 @@ module pc_unit (
     // shift-and-add pc by 4
     //pc_4_sxtc_sig = c{17x{id[15]}, id[15:0]}; // preserve the supervisor bit
     //pc_4_sxtc_32_sig = pc_4_sig + c{pc_4_sxtc_sig, b00}; //implement intermediary signal: pc + 4 + SXT(C)
-
+    //left shifting 2 bits = *4, achieved by concatenating 2 00s at the back
+    
     pc_4_sxtc_sig = c{ia31, pc_4_sig[30:2], b00};
     pc_4_into_full_adder_2 = c{14x{id[15]}, id[15:0], b00};
     pc_4_full_adder_2_out = pc_4_sig + pc_4_into_full_adder_2;
-    pc_4_sxtc_32_sig = c{ia31, pc_4_into_full_adder_2[30:2], b00};
+    pc_4_sxtc_32_sig = c{ia31, pc_4_into_full_adder_2[30:2], b00}; 
     
     /*
     pc_4_sxtc_sig = c{ia31, pc_4_sig[30:2], b00};
