@@ -182,14 +182,14 @@ module game_CU (
         }
 
         game_fsm.CHECK_P1_UP_BOUNDARY:
-        alufn = CMPEQ;
-        asel = b00;
-        bsel = b10;
-        we_regfile = b1;
-        regfile_read_address_a = 0001;
-        // regfile_read_address_b = ;
-        regfile_write_address_c = hF;
-        wdsel = b00;
+          alufn = CMPEQ;
+          asel = b00;
+          bsel = b10;
+          we_regfile = b1;
+          regfile_read_address_a = 0001;
+          // regfile_read_address_b = ;
+          regfile_write_address_c = hF;
+          wdsel = b00;
 
 
 
@@ -199,25 +199,25 @@ module game_CU (
          we_regfile = 1;
          regfile_write_address_c = b0101;     //P2 score reg
          wdsel = b11;                         //P2 winning signal
-         game_fsm.d = game_fsm.BRANCH_CONTINUE_END_P2; 
+         game_fsm.d = game_fsm.P1_LOSE; 
      
       game_fsm.P1_WIN:
          we_regfile = 1;
          regfile_write_address_c = b0100;     //P1 score reg
          wdsel = b11;           //P1 winning signal
-         game_fsm.d = game_fsm.BRANCH_CONTINUE_END_P1; 
+         game_fsm.d = game_fsm.P2_LOSE; 
  
-      game_fsm.P1LOSE:
+      game_fsm.P1_LOSE:
          we_regfile = 1;
          regfile_write_address_c = b0100;     //P1 score reg
          wdsel = b11;           //P1 losingsignal
-         game_fsm.d = game_fsm.P2_WIN; 
+         game_fsm.d = game_fsm.GAMEOVER; 
           
-      game_fsm.P2LOSE:
+      game_fsm.P2_LOSE:
          we_regfile = 1;
          regfile_write_address_c = b0101;     //P2 score reg
-         alu_out_sel = b11;           //P2 losing signal
-         game_fsm.d = game_fsm.P1_WIN; 
+         wdsel = b11;           //P2 losing signal
+         game_fsm.d = game_fsm.GAMEOVER; 
       
           
       game_fsm.GAMEOVER:
