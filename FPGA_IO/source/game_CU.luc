@@ -153,18 +153,45 @@ module game_CU (
         wdsel = ;*/
 
       game_fsm.IDLE:
-        if (decrease_timer){
-          game_fsm.d = game_fsm.CHECK_GAMETIMER;
-        }
-        else if (p1_button_up){
+        if (p1_button_up){
             game_fsm.d = game_fsm.CHECK_P1_UP_BOUNDARY;
         }
         else if (p2_button_up){
             game_fsm.d = game_fsm.CHECK_P2_UP_BOUNDARY;
         }
+         else if (p1_button_down){
+            game_fsm.d = game_fsm.CHECK_P1_DOWN_BOUNDARY;
+        }
+        else if (p2_button_down){
+            game_fsm.d = game_fsm.CHECK_P2_DOWN_BOUNDARY;
+        }
+        else if (p1_button_left){
+            game_fsm.d = game_fsm.CHECK_P1_LEFT_BOUNDARY;
+        }
+        else if (p2_button_left){
+            game_fsm.d = game_fsm.CHECK_P2_LEFT_BOUNDARY;
+        }
+        else if (p1_button_right){
+            game_fsm.d = game_fsm.CHECK_P1_RIGHT_BOUNDARY;
+        }
+        else if (p2_button_right){
+            game_fsm.d = game_fsm.CHECK_P2_RIGHT_BOUNDARY;
+        }
         else{
             game_fsm.d = game_fsm.IDLE;
         }
+
+        game_fsm.CHECK_P1_UP_BOUNDARY:
+        alufn = CMPEQ;
+        asel = b00;
+        bsel = b10;
+        we_regfile = b1;
+        regfile_read_address_a = 0001;
+        // regfile_read_address_b = ;
+        regfile_write_address_c = hF;
+        wdsel = b00;
+
+
 
 
           
