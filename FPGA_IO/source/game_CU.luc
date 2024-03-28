@@ -17,13 +17,11 @@ module game_CU (
     output alufn[6],
     output asel[3],
     output bsel[3],
-    output alu_out_sel[2],
-    output regfile_write_address[4],
+    output wdsel[2],
+    output regfile_write_address_c[4],
     output regfile_read_address_a[4],
     output regfile_read_address_b[4],
     output we_regfile,
-    output decimal_counter_increase,
-    output decimal_counter_rst,
     output debug[4]
   ) {
 
@@ -105,17 +103,17 @@ module game_CU (
     case(game_fsm.q){
     
       game_fsm.CHECK_MAP_COUNT:
-        alufn = CMPEQ;
+        alufn = 100100; //CMPEQ
         asel = b00; 
         bsel = b01;
-        we_regfile = b1;
-        regfile_read_address_a = 0110;
-        regfile_read_address_b = --;
-        regfile_write_address_c = 1111;
+        we_regfile = 1;
+        regfile_read_address_a = b0110;
+        //regfile_read_address_b = --;
+        regfile_write_address_c = b1111;
         wdsel = b00;
 
       game_fsm.BRANCH_MAP:
-        we_regfile = b0;
+        we_regfile = 0;
         regfile_read_address_b = 1111;
         if (regfile_datain[0]){                      //if rb == 1
           game_fsm.d = game_fsm.LOAD_MAP_0;
@@ -125,26 +123,26 @@ module game_CU (
         }
 
       game_fsm.LOAD_MAP_0:
-        alufn = ;
-        asel = ; 
-        bsel = ;
-        we_regfile = ;
-        regfile_read_address_a = ;
-        regfile_read_address_b = ;
-        regfile_write_address_c = ;
-        wdsel = ;
+        //alufn = --;
+        //asel = --; 
+        //bsel = --;
+        we_regfile = 1;
+        //regfile_read_address_a = --;
+        //regfile_read_address_b = --;
+        regfile_write_address_c = b0110;
+        wdsel = b11;
 
       game_fsm.ADD_1_TO_MAP:
-        alufn = ;
-        asel = ; 
-        bsel = ;
-        we_regfile = ;
-        regfile_read_address_a = ;
-        regfile_read_address_b = ;
-        regfile_write_address_c = ;
-        wdsel = ;
+        alufn = b100000; //ADD
+        asel = b01; 
+        bsel = b00;
+        we_regfile = 1;
+        //regfile_read_address_a = --;
+        regfile_read_address_b = b0110;
+        regfile_write_address_c = b0110;
+        wdsel = b00;
 
-      game_fsm.FLASH_MAP:
+      /*game_fsm.FLASH_MAP:
         alufn = ;
         asel = ; 
         bsel = ;
@@ -152,7 +150,7 @@ module game_CU (
         regfile_read_address_a = ;
         regfile_read_address_b = ;
         regfile_write_address_c = ;
-        wdsel = ;
+        wdsel = ;*/
 
       game_fsm.IDLE:
         if (decrease_timer){
@@ -170,29 +168,29 @@ module game_CU (
 
 
           
-      game_fsm.P2WINS:
+      game_fsm.P2_WIN:
          we_regfile = 1;
-         regfile_write_address = b0001;     //P2 score reg
-         alu_out_sel = b01;           //P2 winning signal
-         game_fsm.d = game_fsm.P1LOSE; 
+         regfile_write_address_c = b0101;     //P2 score reg
+         wdsel = b11;                         //P2 winning signal
+         game_fsm.d = game_fsm.BRANCH_CONTINUE_END_P2; 
      
-      game_fsm.P1WINS:
+      game_fsm.P1_WIN:
          we_regfile = 1;
-         regfile_write_address = b0000;     //P1 score reg
-         alu_out_sel = b01;           //P1 winning signal
-         game_fsm.d = game_fsm.P2LOSE; 
+         regfile_write_address_c = b0100;     //P1 score reg
+         wdsel = b11;           //P1 winning signal
+         game_fsm.d = game_fsm.BRANCH_CONTINUE_END_P1; 
  
       game_fsm.P1LOSE:
          we_regfile = 1;
-         regfile_write_address = b0000;     //P1 score reg
-         alu_out_sel = b11;           //P1 losingsignal
-         game_fsm.d = game_fsm.GAMEOVER; 
+         regfile_write_address_c = b0100;     //P1 score reg
+         wdsel = b11;           //P1 losingsignal
+         game_fsm.d = game_fsm.P2_WIN; 
           
       game_fsm.P2LOSE:
          we_regfile = 1;
-         regfile_write_address = b0001;     //P2 score reg
+         regfile_write_address_c = b0101;     //P2 score reg
          alu_out_sel = b11;           //P2 losing signal
-         game_fsm.d = game_fsm.GAMEOVER; 
+         game_fsm.d = game_fsm.P1_WIN; 
       
           
       game_fsm.GAMEOVER:
