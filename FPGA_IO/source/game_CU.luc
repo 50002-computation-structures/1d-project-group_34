@@ -420,6 +420,15 @@ module game_CU (
         wdsel = b00;
         game_fsm.d = game_fsm.CHECK_P2_POS;
 
+        game_fsm.CHECK_P1_POS:
+        alufn = "A";
+        asel = from rom; 
+        we_regfile = b1;
+        regfile_read_address_a = h0;
+        regfile_write_address_c = hF;
+        wdsel = b00;
+        game_fsm.d = game_fsm.BRANCH_CONTINUE_END_P1;
+
 
 
 
