@@ -1,6 +1,8 @@
 module game_CU (
     input clk,  // clock
     input rst,  // reset
+
+    //input decrease_timer,
     input regfile_datain[16], //direct reading of regfile data from read_address_b
     
     input p1_button_up,
@@ -32,7 +34,9 @@ module game_CU (
       LOAD_MAP_0,
       ADD_1_TO_MAP,
       FLASH_MAP,
-
+      STOP_FLASH_MAP,
+      TIMER_OUT,
+      
       IDLE,
 
       CHECK_P1_UP_BOUNDARY,
@@ -92,6 +96,7 @@ module game_CU (
     wdsel = 0;
     
     debug = b0000;
+
     
     
     if (rst){
@@ -110,10 +115,11 @@ module game_CU (
         //regfile_read_address_b = --;
         regfile_write_address_c = b1111;
         wdsel = b00;
+        game_fsm.d = game_fsm.BRANCH_MAP;          
 
       game_fsm.BRANCH_MAP:
         we_regfile = 0;
-        regfile_read_address_b = 1111;
+        regfile_read_address_b = b1111;
         if (regfile_datain[0]){                      //if rb == 1
           game_fsm.d = game_fsm.LOAD_MAP_0;
         }
@@ -121,7 +127,7 @@ module game_CU (
           game_fsm.d = game_fsm.ADD_1_TO_MAP;
         }
 
-      game_fsm.LOAD_MAP_0:
+      game_fsm.LOAD_MAP_0: //
         //alufn = --;
         //asel = --; 
         //bsel = --;
@@ -130,6 +136,7 @@ module game_CU (
         //regfile_read_address_b = --;
         regfile_write_address_c = b0110;
         wdsel = b11;
+        game_fsm.d = game_fsm.FLASH_MAP;        
 
       game_fsm.ADD_1_TO_MAP:
         alufn = b100000; //ADD
@@ -140,16 +147,30 @@ module game_CU (
         regfile_read_address_b = b0110;
         regfile_write_address_c = b0110;
         wdsel = b00;
+        game_fsm.d = game_fsm.FLASH_MAP;          
 
-      game_fsm.FLASH_MAP: //no writes, no need datapath when flash leds
-        //alufn = ;
-        //asel = ; 
+      game_fsm.FLASH_MAP: 
+        alufn = b011010; //A
+        asel = b001;     //1
         //bsel = ;
-        we_regfile = 0 ;
-        //regfile_read_address_a = ;
-        //regfile_read_address_b = ;
-        //regfile_write_address_c = ;
-        //wdsel = ;*/
+        we_regfile = 1 ;
+        //regfile_read_address_a = --;
+        regfile_read_address_b = b0111;
+        regfile_write_address_c = b0111;
+        wdsel = b00;
+        game_fsm.d = game_fsm.TIMER_OUT;          
+          
+      game_fsm.TIMER_OUT:
+        alufn =  b100001; //SUB
+        asel = b001;     //1
+        bsel = b00;
+        we_regfile = 1 ;
+        //regfile_read_address_a = --;
+        regfile_read_address_b = b0111;
+        regfile_write_address_c = b0111;
+        wdsel = b00;
+        game_fsm.d = game_fsm.IDLE;                  
+         
 
       game_fsm.IDLE:
         if (p1_button_up){
@@ -185,14 +206,15 @@ module game_CU (
         asel = b00;
         bsel = b10;
         we_regfile = b1;
-        regfile_read_address_a = h1;
-        regfile_write_address_c = hF;
+        regfile_read_address_a = b0001;
+        regfile_write_address_c = b1111;
         wdsel = b00;
         game_fsm.d = game_fsm.BRANCH_P1_UP;
+          
 
         game_fsm.BRANCH_P1_UP:
         we_regfile = b0;
-        regfile_write_address_c = hF;
+        regfile_read_address_b = b1111;
         if (regfile_datain[0]){
           game_fsm.d = game_fsm.IDLE;
         }
@@ -205,24 +227,25 @@ module game_CU (
         asel = b01; 
         bsel = b00;
         we_regfile = b1;
-        regfile_read_address_b = h1;
-        regfile_write_address_c = h1;
+        regfile_read_address_b = b0001;
+        regfile_write_address_c = b0001;
         wdsel = b00;
         game_fsm.d = game_fsm.CHECK_P1_POS;
+
 
         game_fsm.CHECK_P2_UP_BOUNDARY:
         alufn = b100100; //CMPEQ
         asel = b00;
         bsel = b10;
         we_regfile = b1;
-        regfile_read_address_a = h3;
-        regfile_write_address_c = hF;
+        regfile_read_address_a = b0011;
+        regfile_write_address_c = b1111;
         wdsel = b00;
         game_fsm.d = game_fsm.BRANCH_P1_UP;
 
         game_fsm.BRANCH_P2_UP:
         we_regfile = b0;
-        regfile_write_address_c = hF;
+        regfile_read_address_b = b1111;
         if (regfile_datain[0]){
           game_fsm.d = game_fsm.IDLE;
         }
@@ -235,8 +258,8 @@ module game_CU (
         asel = b01; 
         bsel = b00;
         we_regfile = b1;
-        regfile_read_address_b = h3;
-        regfile_write_address_c = h3;
+        regfile_read_address_b = b0011;
+        regfile_write_address_c = b0011;
         wdsel = b00;
         game_fsm.d = game_fsm.CHECK_P2_POS;
 
@@ -245,14 +268,14 @@ module game_CU (
         asel = b00;
         bsel = b01;
         we_regfile = b1;
-        regfile_read_address_a = h1;
-        regfile_write_address_c = hF;
+        regfile_read_address_a = b0001;
+        regfile_write_address_c = b1111;
         wdsel = b00;
         game_fsm.d = game_fsm.BRANCH_P1_DOWN;
 
         game_fsm.BRANCH_P1_DOWN:
         we_regfile = b0;
-        regfile_write_address_c = hF;
+        regfile_read_address_b = b1111;
         if (regfile_datain[0]){
           game_fsm.d = game_fsm.IDLE;
         }
@@ -265,8 +288,8 @@ module game_CU (
         asel = b01; 
         bsel = b00;
         we_regfile = b1;
-        regfile_read_address_b = h1;
-        regfile_write_address_c = h1;
+        regfile_read_address_b = b0001;
+        regfile_write_address_c = b0001;
         wdsel = b00;
         game_fsm.d = game_fsm.CHECK_P1_POS;
 
@@ -275,14 +298,14 @@ module game_CU (
         asel = b00;
         bsel = b01;
         we_regfile = b1;
-        regfile_read_address_a = h3;
-        regfile_write_address_c = hF;
+        regfile_read_address_a = b0011;
+        regfile_write_address_c = b1111;
         wdsel = b00;
         game_fsm.d = game_fsm.BRANCH_P2_DOWN;
 
         game_fsm.BRANCH_P2_DOWN:
         we_regfile = b0;
-        regfile_write_address_c = hF;
+        regfile_read_address_b = b1111;
         if (regfile_datain[0]){
           game_fsm.d = game_fsm.IDLE;
         }
@@ -295,8 +318,8 @@ module game_CU (
         asel = b01; 
         bsel = b00;
         we_regfile = b1;
-        regfile_read_address_b = h3;
-        regfile_write_address_c = h3;
+        regfile_read_address_b = b0011;
+        regfile_write_address_c = b0011;
         wdsel = b00;
         game_fsm.d = game_fsm.CHECK_P2_POS;
 
@@ -305,14 +328,14 @@ module game_CU (
         asel = b00;
         bsel = b10;
         we_regfile = b1;
-        regfile_read_address_a = h0;
-        regfile_write_address_c = hF;
+        regfile_read_address_a = b0000;
+        regfile_write_address_c = b1111;
         wdsel = b00;
         game_fsm.d = game_fsm.BRANCH_P1_LEFT;
 
         game_fsm.BRANCH_P1_LEFT:
         we_regfile = b0;
-        regfile_write_address_c = hF;
+        regfile_write_address_c = b1111;
         if (regfile_datain[0]){
           game_fsm.d = game_fsm.IDLE;
         }
@@ -325,8 +348,8 @@ module game_CU (
         asel = b01; 
         bsel = b00;
         we_regfile = b1;
-        regfile_read_address_b = h0;
-        regfile_write_address_c = h0;
+        regfile_read_address_b = b0;
+        regfile_write_address_c = b0;
         wdsel = b00;
         game_fsm.d = game_fsm.CHECK_P1_POS;
 
@@ -335,14 +358,14 @@ module game_CU (
         asel = b00;
         bsel = b10;
         we_regfile = b1;
-        regfile_read_address_a = h2;
-        regfile_write_address_c = hF;
+        regfile_read_address_a = b0010;
+        regfile_write_address_c = b1111;
         wdsel = b00;
         game_fsm.d = game_fsm.BRANCH_P2_LEFT;
 
         game_fsm.BRANCH_P2_LEFT:
         we_regfile = b0;
-        regfile_write_address_c = hF;
+        regfile_read_address_b = b1111;
         if (regfile_datain[0]){
           game_fsm.d = game_fsm.IDLE;
         }
@@ -355,8 +378,8 @@ module game_CU (
         asel = b01; 
         bsel = b00;
         we_regfile = b1;
-        regfile_read_address_b = h2;
-        regfile_write_address_c = h2;
+        regfile_read_address_b = b0010;
+        regfile_write_address_c = b0010;
         wdsel = b00;
         game_fsm.d = game_fsm.CHECK_P2_POS;
 
@@ -365,14 +388,14 @@ module game_CU (
         asel = b00;
         bsel = b01;
         we_regfile = b1;
-        regfile_read_address_a = h0;
-        regfile_write_address_c = hF;
+        regfile_read_address_a = b0000;
+        regfile_write_address_c = b1111;
         wdsel = b00;
         game_fsm.d = game_fsm.BRANCH_P1_RIGHT;
 
         game_fsm.BRANCH_P1_RIGHT:
         we_regfile = b0;
-        regfile_write_address_c = hF;
+        regfile_write_address_c = b1111;
         if (regfile_datain[0]){
           game_fsm.d = game_fsm.IDLE;
         }
@@ -385,8 +408,8 @@ module game_CU (
         asel = b01; 
         bsel = b00;
         we_regfile = b1;
-        regfile_read_address_b = h0;
-        regfile_write_address_c = h0;
+        regfile_read_address_b = b0000;
+        regfile_write_address_c = b0000;
         wdsel = b00;
         game_fsm.d = game_fsm.CHECK_P1_POS;
 
@@ -395,14 +418,14 @@ module game_CU (
         asel = b00;
         bsel = b01;
         we_regfile = b1;
-        regfile_read_address_a = h2;
-        regfile_write_address_c = hF;
+        regfile_read_address_a = b0010;
+        regfile_write_address_c = b1111;
         wdsel = b00;
         game_fsm.d = game_fsm.BRANCH_P2_RIGHT;
 
         game_fsm.BRANCH_P2_RIGHT:
         we_regfile = b0;
-        regfile_write_address_c = hF;
+        regfile_read_address_b = b1111;
         if (regfile_datain[0]){
           game_fsm.d = game_fsm.IDLE;
         }
@@ -415,8 +438,8 @@ module game_CU (
         asel = b01; 
         bsel = b00;
         we_regfile = b1;
-        regfile_read_address_b = h2;
-        regfile_write_address_c = h2;
+        regfile_read_address_b = b0010;
+        regfile_write_address_c = b0010;
         wdsel = b00;
         game_fsm.d = game_fsm.CHECK_P2_POS;
 
@@ -428,6 +451,7 @@ module game_CU (
         regfile_write_address_c = hF;
         wdsel = b00;
         game_fsm.d = game_fsm.BRANCH_CONTINUE_END_P1;
+
 
 
 
@@ -463,6 +487,7 @@ module game_CU (
       game_fsm.GAMEOVER:
         debug = b1111;
         game_fsm.d = game_fsm.GAMEOVER;           
+             
         
       
 
