@@ -1,7 +1,6 @@
 module game_CU (
     input clk,  // clock
     input rst,  // reset
-    input start_button,
     input regfile_datain[16], //direct reading of regfile data from read_address_b
     
     input p1_button_up,
@@ -142,15 +141,15 @@ module game_CU (
         regfile_write_address_c = b0110;
         wdsel = b00;
 
-      /*game_fsm.FLASH_MAP:
-        alufn = ;
-        asel = ; 
-        bsel = ;
-        we_regfile = ;
-        regfile_read_address_a = ;
-        regfile_read_address_b = ;
-        regfile_write_address_c = ;
-        wdsel = ;*/
+      game_fsm.FLASH_MAP: //no writes, no need datapath when flash leds
+        //alufn = ;
+        //asel = ; 
+        //bsel = ;
+        we_regfile = 0 ;
+        //regfile_read_address_a = ;
+        //regfile_read_address_b = ;
+        //regfile_write_address_c = ;
+        //wdsel = ;*/
 
       game_fsm.IDLE:
         if (p1_button_up){
