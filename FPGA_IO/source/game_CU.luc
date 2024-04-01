@@ -135,7 +135,7 @@ module game_CU (
         //regfile_read_address_a = --;
         //regfile_read_address_b = --;
         regfile_write_address_c = b0110;
-        wdsel = b11;
+        wdsel = b00;
         game_fsm.d = game_fsm.FLASH_MAP;        
 
       game_fsm.ADD_1_TO_MAP:
@@ -150,6 +150,22 @@ module game_CU (
         game_fsm.d = game_fsm.FLASH_MAP;          
 
       game_fsm.FLASH_MAP: 
+
+        //initialise player start position based on map
+        //for address 0 to 15: if map_rom[address] = b11:
+        //player 1,2 x coord = address[3:2]
+        //player 1,2 y coord = address[1:0]
+          
+        //initialise goal position based on map
+        //for address 0 to 15: if map_rom[address] = b10:
+        //goal x coord = address[3:2]
+        //goal y coord = address[1:0]
+          
+        //initialise restricted areas based on map
+        //for address 0 to 15: if map_rom[address] = b01:
+        //restricted path = array += address
+
+
         alufn = b011010; //A
         asel = b001;     //1
         //bsel = ;
