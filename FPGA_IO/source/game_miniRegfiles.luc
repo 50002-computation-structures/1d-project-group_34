@@ -16,7 +16,7 @@ module game_miniRegfiles (
     //debug
     output timer[16],
     output all_scores[32],
-    output all_buttons[4],
+    output all_buttons[4]
 
 
   ) 
@@ -84,12 +84,12 @@ module game_miniRegfiles (
     
 
     
-    //For debugging
-    all_scores[15:0] = p1_x.q;
+    //For debugging -- nat code; not edited
+    /*all_scores[15:0] = p1_x.q;
     all_scores[31:16] = p2_score.q;
     all_buttons[1:0] = p1_buttonPress.q[1:0];
     all_buttons[3:2] = p2_buttonPress.q[1:0];
-    timer = current_timer.q;
+    timer = current_timer.q;*/
 
   }
 }
