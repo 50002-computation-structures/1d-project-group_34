@@ -395,7 +395,7 @@ module game_CU (
 
         game_fsm.BRANCH_P1_RIGHT:
         we_regfile = b0;
-        regfile_write_address_c = b1111;
+        regfile_read_address_b = b1111;
         if (regfile_datain[0]){
           game_fsm.d = game_fsm.IDLE;
         }
