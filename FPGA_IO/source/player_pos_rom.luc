@@ -1,0 +1,12 @@
+module player_pos_rom (
+    input clk,  // clock
+    input rst,  // reset
+    input map_num[2],
+    output out[4]
+  ) {
+  const P_POS_ROM = {b0011, b1100, b0000//index 0 is rightmost
+  };
+  always {
+    out = P_POS_ROM[map_num];
+  }
+}

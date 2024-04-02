@@ -25,7 +25,7 @@ module game_CU (
     output we_regfile,
     output debug[4]
   ) {
-
+  
   
   .clk(clk){
     fsm game_fsm={
@@ -97,6 +97,20 @@ module game_CU (
     
     debug = b0000;
 
+    //initialise player start position based on map
+    //for address 0 to 15: if map_rom[address] = b11:
+    //player 1,2 x coord = address[3:2]
+    //player 1,2 y coord = address[1:0]
+      
+    //initialise goal position based on map
+    //for address 0 to 15: if map_rom[address] = b10:
+    //goal x coord = address[3:2]
+    //goal y coord = address[1:0]
+      
+    //initialise restricted areas based on map
+    //for address 0 to 15: if map_rom[address] = b01:
+    //restricted path = array += address
+
     
     
     if (rst){
@@ -150,21 +164,6 @@ module game_CU (
         game_fsm.d = game_fsm.FLASH_MAP;          
 
       game_fsm.FLASH_MAP: 
-
-        //initialise player start position based on map
-        //for address 0 to 15: if map_rom[address] = b11:
-        //player 1,2 x coord = address[3:2]
-        //player 1,2 y coord = address[1:0]
-          
-        //initialise goal position based on map
-        //for address 0 to 15: if map_rom[address] = b10:
-        //goal x coord = address[3:2]
-        //goal y coord = address[1:0]
-          
-        //initialise restricted areas based on map
-        //for address 0 to 15: if map_rom[address] = b01:
-        //restricted path = array += address
-
 
         alufn = b011010; //A
         asel = b001;     //1
