@@ -34,6 +34,7 @@ module map_rom#(
       b10: out_encoding = MAP_2_ROM;
       default:
       out_encoding = MAP_0_ROM;
+    
   }
 }
 }

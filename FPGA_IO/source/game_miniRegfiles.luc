@@ -11,12 +11,18 @@ module game_miniRegfiles (
     input read_address_b[4], //address port b
     output out_a[16], //read port a
     output out_b[16], //read port b
+    
+    output p1_x_coord[2],
+    output p1_y_coord[2],
+    output p2_x_coord[2],
+    output p2_y_coord[2],
+    output mapnum[2]
 
     
     //debug
-    output timer[16],
+    /*output timer[16],
     output all_scores[32],
-    output all_buttons[4]
+    output all_buttons[4]*/
 
 
   ) 
@@ -33,6 +39,7 @@ module game_miniRegfiles (
       dff map[16](#INIT(0));
       dff temp_var[16](#INIT(0));
       dff current_timer[16](#INIT(0));
+
     }
   }
 
@@ -47,11 +54,13 @@ module game_miniRegfiles (
         b0011 : p2_y.d = data;              // 0x3: Player 2 y coordinate
         b0100 : p1_result.d = data;         // 0x4: Player 1 result
         b0101 : p2_result.d = data;         // 0x5: Player 2 result
-        b0110 : map.d = data;               // 0x6: map    
+        b0110 : map.d = data;          // 0x6: map    
         b0111 : current_timer.d = data;     // 0x7: Flash timer
         b1111 : temp_var.d = data;          // 0xF: temp reg
+
       }
-    }
+      }
+    
     
       
     //read port a
@@ -90,6 +99,11 @@ module game_miniRegfiles (
     all_buttons[1:0] = p1_buttonPress.q[1:0];
     all_buttons[3:2] = p2_buttonPress.q[1:0];
     timer = current_timer.q;*/
-
+     p1_x_coord = p1_x.q;
+     p1_y_coord = p1_y.q;
+     p2_x_coord = p2_x.q;
+     p2_y_coord = p2_y.q;
+     mapnum = map.q;
+  
   }
-}
+  }
