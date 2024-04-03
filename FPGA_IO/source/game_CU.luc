@@ -2,9 +2,10 @@ module game_CU (
     input clk,  // clock
     input rst,  // reset
 
-    //input decrease_timer,
+    input decrease_timer,
     input regfile_datain[16], //direct reading of regfile data from read_address_b
     
+    input start_button,
     input p1_button_up,
     input p1_button_down,
     input p1_button_left,
@@ -15,6 +16,13 @@ module game_CU (
     input p2_button_left,
     input p2_button_right,
     
+    input p1_x_coord,
+    input p1_y_coord,
+    input p2_x_coord,
+    input p2_y_coord,
+    
+    //input playerpos, 
+    
     output alufn[6],
     output asel[3],
     output bsel[3],
@@ -23,11 +31,18 @@ module game_CU (
     output regfile_read_address_a[4],
     output regfile_read_address_b[4],
     output we_regfile,
-    output debug[4]
+    output debug[4],
+    output fsm_to_led_write[1]
   ) {
+
+  map_rom mapRom;
+  player_pos_rom playerPosRom;
   
+  sig map[16][2];
+  sig loc_type[2];
   
   .clk(clk){
+
     fsm game_fsm={
       CHECK_MAP_COUNT,
       BRANCH_MAP,
@@ -37,6 +52,10 @@ module game_CU (
       FLASH_MAP,
       STOP_FLASH_MAP,
       TIMER_OUT,
+      INITP1_X_POS,
+      INITP1_Y_POS,
+      INITP2_X_POS,
+      INITP2_Y_POS,
       
       IDLE,
 
@@ -83,8 +102,9 @@ module game_CU (
       };
     
   }
+
   
-  always {
+always {
   
     // standard setting unless otherwise overwritten by each case 
     alufn = 0;
@@ -95,23 +115,13 @@ module game_CU (
     regfile_read_address_b = 0000;
     regfile_write_address_c = 1111;
     wdsel = 0;
-    
+    //ROM_asel_in = 0;
+    mapRom.map_num = 0;
+    mapRom.address = 0;
+    playerPosRom.map_num = 0;
+    loc_type = 0;
+    fsm_to_led_write =0;
     debug = b0000;
-
-    //initialise player start position based on map
-    //for address 0 to 15: if map_rom[address] = b11:
-    //player 1,2 x coord = address[3:2]
-    //player 1,2 y coord = address[1:0]
-      
-    //initialise goal position based on map
-    //for address 0 to 15: if map_rom[address] = b10:
-    //goal x coord = address[3:2]
-    //goal y coord = address[1:0]
-      
-    //initialise restricted areas based on map
-    //for address 0 to 15: if map_rom[address] = b01:
-    //restricted path = array += address
-
     
     
     if (rst){
@@ -150,8 +160,8 @@ module game_CU (
         //regfile_read_address_a = --;
         //regfile_read_address_b = --;
         regfile_write_address_c = b0110;
-        wdsel = b00;
-        game_fsm.d = game_fsm.FLASH_MAP;        
+        wdsel = b11;
+        game_fsm.d = game_fsm.MAP_UPDATE;        
 
       game_fsm.ADD_1_TO_MAP:
         alufn = b100000; //ADD
@@ -162,16 +172,51 @@ module game_CU (
         regfile_read_address_b = b0110;
         regfile_write_address_c = b0110;
         wdsel = b00;
-        game_fsm.d = game_fsm.MAP_UPDATE;
-
-      game_fsm.MAP_UPDATE:          
+        game_fsm.d = game_fsm.MAP_UPDATE;   
+          
+      game_fsm.MAP_UPDATE: //initialise map and player position
+        regfile_read_address_b = b0110;          
         mapRom.map_num = regfile_datain[1:0];
+        playerPosRom.map_num = regfile_datain[1:0]; // 0, 1, 2 
         map = mapRom.out_encoding;
-        game_fsm.d = game_fsm.FLASH_MAP;         
-
+        game_fsm.d = game_fsm.INITP1_X_POS;    
+               
+      game_fsm.INITP1_X_POS:
+        alufn = b101010; //A
+        we_regfile = b1;
+        regfile_write_address_c = b0000;
+        asel =  b110;             //:  playerpos.outx;
+        wdsel = b00;
+        game_fsm.d = game_fsm.INITP1_Y_POS;
+                    
+          
+          
+      game_fsm.INITP1_Y_POS:
+        alufn = b101010; //A
+        we_regfile = b1;
+        regfile_write_address_c = b0001;
+        asel =  b111;             //:  playerpos.outy;
+        wdsel = b00;
+        game_fsm.d = game_fsm.INITP2_X_POS;
+          
+      game_fsm.INITP2_X_POS:
+        alufn = b101010; //A
+        we_regfile = b1;
+        regfile_write_address_c = b0010;
+        asel =  b110;             //:  playerpos.outy;
+        wdsel = b00;
+        game_fsm.d = game_fsm.INITP2_Y_POS;          
+          
+      game_fsm.INITP2_Y_POS:
+        alufn = b101010; //A
+        we_regfile = b1;
+        regfile_write_address_c = b0011;
+        asel =  b111;             //:  playerpos.outy;
+        wdsel = b00;
+        game_fsm.d = game_fsm.FLASH_MAP;          
+                    
       game_fsm.FLASH_MAP: 
-
-        alufn = b011010; //A
+        alufn = b101010; //A
         asel = b001;     //1
         //bsel = ;
         we_regfile = 1 ;
@@ -179,6 +224,7 @@ module game_CU (
         regfile_read_address_b = b0111;
         regfile_write_address_c = b0111;
         wdsel = b00;
+        fsm_to_led_write =1;
         game_fsm.d = game_fsm.TIMER_OUT;          
           
       game_fsm.TIMER_OUT:
@@ -190,6 +236,7 @@ module game_CU (
         regfile_read_address_b = b0111;
         regfile_write_address_c = b0111;
         wdsel = b00;
+        fsm_to_led_write =0;
         game_fsm.d = game_fsm.IDLE;                  
          
 
@@ -465,21 +512,49 @@ module game_CU (
         game_fsm.d = game_fsm.CHECK_P2_POS;
 
         game_fsm.CHECK_P1_POS:
-        alufn = "A";
-        asel = from rom; 
+        alufn = b101010;  //A
+        mapRom.address = c{p1_x_coord, p1_y_coord};
+        asel =  b101;             //:  mapRom.out_encoding[p1_y_coord*4+p1_x_coord]; 
         we_regfile = b1;
-        regfile_read_address_a = h0;
         regfile_write_address_c = hF;
         wdsel = b00;
         game_fsm.d = game_fsm.BRANCH_CONTINUE_END_P1;
 
-
-
-
-
-
-
+        game_fsm.BRANCH_CONTINUE_END_P1:
+        we_regfile = b0;
+        regfile_read_address_b = b1111;
+        if (regfile_datain == 0){
+          game_fsm.d = game_fsm.IDLE;
+        }
+        else if (regfile_datain == 1){
+          game_fsm.d = game_fsm.P2_WIN;
+            }
+        else{ //regfile_datain == 2
+          game_fsm.d = game_fsm.P1_WIN;
+        }
           
+        game_fsm.CHECK_P2_POS:
+        alufn = b101010; //A
+        mapRom.address = c{p2_x_coord, p2_y_coord};
+        asel =  b101;             //:  mapRom.out_encoding[p1_y_coord*4+p1_x_coord]; 
+        we_regfile = b1;
+        regfile_write_address_c = hF;
+        wdsel = b00;
+        game_fsm.d = game_fsm.BRANCH_CONTINUE_END_P2;
+
+        game_fsm.BRANCH_CONTINUE_END_P2:
+        we_regfile = b0;
+        regfile_read_address_b = b1111;
+        if (regfile_datain == 0){
+          game_fsm.d = game_fsm.IDLE;
+        }
+        else if (regfile_datain == 1){
+          game_fsm.d = game_fsm.P1_WIN;
+            }
+        else{ //regfile_datain == 2
+          game_fsm.d = game_fsm.P2_WIN;
+        }
+
       game_fsm.P2_WIN:
          we_regfile = 1;
          regfile_write_address_c = b0101;     //P2 score reg
@@ -507,11 +582,11 @@ module game_CU (
           
       game_fsm.GAMEOVER:
         debug = b1111;
-        game_fsm.d = game_fsm.GAMEOVER;           
+        fsm_to_led_write = 1; //flash all green for winner, all red for loser
+        game_fsm.d = game_fsm.GAMEOVER;
+        if (rst | start_button){
+            game_fsm.d = game_fsm.CHECK_MAP_COUNT;
              
-        
-      
-
 
       }
     } 
