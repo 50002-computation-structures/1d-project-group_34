@@ -127,7 +127,7 @@ module game_miniBeta (
     //wdsel mux
     case (game_controlunit.wdsel){
       b01 : players.data = b1111111111111111;  //win
-      b10 : players.data = b0000000000001111;  //draw
+      //b10 : players.data = b0000000000001111;  //draw
       b11 : players.data = 0;                  //lose
       default : //b00
           players.data = game_alu.out;

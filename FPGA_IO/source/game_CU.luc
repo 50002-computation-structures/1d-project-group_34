@@ -558,13 +558,13 @@ always {
       game_fsm.P2_WIN:
          we_regfile = 1;
          regfile_write_address_c = b0101;     //P2 score reg
-         wdsel = b11;                         //P2 winning signal
+         wdsel = b01;                         //P2 winning signal
          game_fsm.d = game_fsm.P1_LOSE; 
      
       game_fsm.P1_WIN:
          we_regfile = 1;
          regfile_write_address_c = b0100;     //P1 score reg
-         wdsel = b11;           //P1 winning signal
+         wdsel = b01;           //P1 winning signal
          game_fsm.d = game_fsm.P2_LOSE; 
  
       game_fsm.P1_LOSE:
