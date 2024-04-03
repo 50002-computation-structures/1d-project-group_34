@@ -33,6 +33,7 @@ module game_CU (
       BRANCH_MAP,
       LOAD_MAP_0,
       ADD_1_TO_MAP,
+      MAP_UPDATE,
       FLASH_MAP,
       STOP_FLASH_MAP,
       TIMER_OUT,
@@ -161,7 +162,12 @@ module game_CU (
         regfile_read_address_b = b0110;
         regfile_write_address_c = b0110;
         wdsel = b00;
-        game_fsm.d = game_fsm.FLASH_MAP;          
+        game_fsm.d = game_fsm.MAP_UPDATE;
+
+      game_fsm.MAP_UPDATE:          
+        mapRom.map_num = regfile_datain[1:0];
+        map = mapRom.out_encoding;
+        game_fsm.d = game_fsm.FLASH_MAP;         
 
       game_fsm.FLASH_MAP: 
 

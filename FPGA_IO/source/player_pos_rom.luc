@@ -1,6 +1,4 @@
 module player_pos_rom (
-    input clk,  // clock
-    input rst,  // reset
     input map_num[2],
     output out[4]
   ) {
