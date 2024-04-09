@@ -1,115 +1,367 @@
+// basically game_au_top, but since fpga needs the name to be au_top... so i copied over (continue editing in here, the other file is incompletely edited
 module au_top (
     input clk,              // 100MHz clock
     input rst_n,            // reset button (active low)
     output led [8],         // 8 user controllable LEDs
     input usb_rx,           // USB->Serial input
     output usb_tx,          // USB->Serial output
+    
+    output outled,          // to LED strip, Br pin C49, connect LED Strip to 5V for power
     output io_led [3][8],   // LEDs on IO Shield
-    output io_seg [8],      // 7-segment LEDs on IO Shield (ANODE)
+    output io_seg [8],      // 7-segment LEDs on IO Shield
     output io_sel [4],      // Digit select on IO Shield
     input io_button [5],    // 5 buttons on IO Shield
     input io_dip [3][8]     // DIP switches on IO Shield
   ) {
+
+  // We shall always assume that COLUMN_DIMENSION and ROW_DIMENSION is a 2^x
+  const COLUMN_DIMENSION = 4; // how many "columns"? 
+  const ROW_DIMENSION = 4; // how many "rows"?
+
+  const PIXEL_COUNT = COLUMN_DIMENSION *  ROW_DIMENSION;   
+  const ENCODING_AMOUNT = 4; // how many different encodings are used? As example, we use 4
   
-  sig rst;                  // reset signal
-  alu alu;                  // instantiate an alu unit
+  // This is a custom encoding
+  // WHITE (11): START/PLAYER, GREEN (10): GOAL,  RED (01): RESTRICTED, BLACK (00): NOTHING
+  const LEDCOLOR = {24hFFFFFF, 24h0000FF, 24h00FF00, 24h000000}; 
+  sig rst; // reset signal
   
+  // need to edit the data_ram, custom "player location"
+  data_ram ram(#ROW_DIMENSION(ROW_DIMENSION), #ENCODING_AMOUNT(ENCODING_AMOUNT), #COLUMN_DIMENSION(COLUMN_DIMENSION), .clk(clk), .rst(rst));
+  
+    // 0,0 is assumed to be at the top right of LED matrix: Check this with your matrix orientation
+  // this is reversed using the reverser mod
+  // right ---> x --
+  // left ---> x++ 
+  // down ---> y++ 
+  dff player_x_pos[3](.clk(clk), #INIT(010), .rst(rst));
+  dff player_y_pos[3](.clk(clk), #INIT(001), .rst(rst));
+  dff update_ram_flag(.clk(clk), #INIT(0), .rst(rst));
+  
+  // TEST case: for 8x8 matrix, needs 64x2 bits = 128 bits
+  // every row will display the same thing 
+  // only dictate what each row color should be 
+  // The ROM consist of 8 different color sets, the LED matrix strip will cycle through these
+  const MAP_ROM = { //will cycle from map 0 to map 2, dont need check if map 2 then make it 1
+    32b00000010000101000001000011000001, //map2 (1111) to 0000 but encoding still normal
+    32b00100111000100000001000100000001, //map 1
+    32b01000000000001000001010000100111 //map 0
+  };
+  
+
+  //sig rst; // reset signal
+  sig encoded_pixel_address[$clog2(PIXEL_COUNT)*$clog2(ENCODING_AMOUNT)];
+  sig current_color_encoding[$clog2(ENCODING_AMOUNT)];
+
+  var index;
+
+  // observed output of the strip: (if matrix is used, this is the value of the top row or first row)
+  // (connector) WHITE WHITE BLUE WHITE RED WHITE GREEN WHITE BLUE BLUE BLUE BLUE BLUE BLUE BLUE BLUE (end of strip)
+  // e.g: E is 1110 ---> 10 first (BLUE) then 11 (WHITE)
+  // as example, we repeat pattern each row, assuming there are 16 cols in a row hence 32 bits of encoded data per row
+  dff led_encoding[PIXEL_COUNT*$clog2(ENCODING_AMOUNT)](.clk(clk), .rst(rst), #INIT(16x{MAP_ROM[0]})); // 2 bit to encode a color per pixel
+  dff temp_encoding[PIXEL_COUNT*$clog2(ENCODING_AMOUNT)](.clk(clk), .rst(rst), #INIT(0)); // holds temporary value (double buffering)
+  
+  
+  // for ROM encoding
+  dff counter[28](.clk(clk), .rst(rst), #INIT(0));
+  dff rom_address[$clog2(ROW_DIMENSION)](.clk(clk), #INIT(0), .rst(rst));
+  
+  ws2812b_writer led_strip(#PIXEL_COUNT(PIXEL_COUNT), .clk(clk), .rst(rst)); 
+  //ws2812b_writer led_strip_p2(#PIXEL_COUNT(PIXEL_COUNT), .clk(clk), .rst(rst)); 
+  fsm state(.clk(clk), .rst(rst)) = {IDLE, LOAD, UPDATE_RAM,REFRESH};
+  
+  reverser index_reverser( #COLUMN_DIMENSION(COLUMN_DIMENSION), #ROW_DIMENSION(ROW_DIMENSION));
+  
+  // user inputs 
+  button_conditioner start_button(.clk(clk));
+  edge_detector start_button_edge(.clk(clk), #RISE(1), #FALL(0));
+  
+  button_conditioner movement_button[4](.clk(clk));
+  edge_detector movement_button_edge[4](.clk(clk), #RISE(1), #FALL(0));
+  
+  
+   //---------commented out for testing player movemnt ---------
+  /*button_conditioner clear_button(.clk(clk));
+  edge_detector clear_button_edge(.clk(clk), #RISE(1), #FALL(0));
+  button_conditioner reverse_button(.clk(clk));
+  edge_detector reverse_button_edge(.clk(clk), #RISE(1), #FALL(0));*/
+  
+  // a state to toggle revere 
+  dff matrix_used(#INIT(0), .clk(clk), .rst(rst));  
+    
+
   
   .clk(clk) {
     // The reset conditioner is used to synchronize the reset signal to the FPGA
     // clock. This ensures the entire FPGA comes out of reset at the same time.
+    .rst(rst){
+      game_miniBeta gameMachine;
+
+    }
+    
     reset_conditioner reset_cond;
-    // dffs to store values of a, b, and alufn to be fed to the alu
-    dff a[16](.rst(rst));
-    dff b[16](.rst(rst));
-    dff alufn[6](.rst(rst));
-    fsm alu_runner(.clk(clk), .rst(rst)) = {SET_A_16, SET_B_16, SET_ALUFN, RUN};
-    button_conditioner button_conditioner[5]; // this is to debounce the button signals
-    edge_detector edge_detector[2](#RISE(1), #FALL(0));
-    //edge_detector fall_detector[5] (#RISE(0), #FALL(1), .clk(.clk));
-    //edge_detector clock_rise(#RISE(1), #FALL(0), .clk(.clk));
+
+    edge_detector edge_dt_btn_p1up (#RISE(1), #FALL(0));
+    edge_detector edge_dt_btn_p1down(#RISE(1), #FALL(0));
+    edge_detector edge_dt_btn_p1left(#RISE(1), #FALL(0));
+    edge_detector edge_dt_btn_p1right(#RISE(1), #FALL(0));
+
+    button_conditioner btn_cond_p1_button_up;
+    button_conditioner btn_cond_p1_button_down;    
+    button_conditioner btn_cond_p1_button_left;
+    button_conditioner btn_cond_p1_button_right;    
+
+   
+    button_conditioner btn_cond_p2_button_up;
+    button_conditioner btn_cond_p2_button_down;    
+    button_conditioner btn_cond_p2_button_left;
+    button_conditioner btn_cond_p2_button_right;    
+        
+    //multi_dec_ctr dec_ctr;
   }
   
   always {
-    reset_cond.in = ~rst_n;   // input raw inverted reset signal
-    rst = reset_cond.out;     // conditioned reset
-    button_conditioner.in = io_button[4:0];
-    edge_detector.in = button_conditioner.out[4:3];
+    reset_cond.in = ~rst_n; // input raw inverted reset signal
+    rst = reset_cond.out;   // conditioned reset
     
-    led = c{1b0, io_button};  // connect buttons to LEDs to see which button is pressed
+    usb_tx = usb_rx;        // loop serial port
     
-    usb_tx = usb_rx;          // loop serial port
+    led = 8h00;             // turn LEDs off
     
-    io_seg = 8b0; // connect segments to the driver
-    io_sel = 4b0110; // turn on rightmost digit, and leftmost digit
+    io_led = 3x{{8h00}};    // turn LEDs off
+    io_seg = 8hff;          // turn segments off
+    io_sel = 4hf;           // select no digits
     
-    // alu to receive inputs from the dffs
-    alu.a = a.q;
-    alu.b = b.q;
-    alu.alufn_signal = alufn.q;
+    counter.d = counter.q + 1;
+         
+    btn_cond_p1_button_up.in = io_button[4]; //to reduce the bouncing effects of your button 
+    btn_cond_p1_button_down.in  = io_button[3];
+    btn_cond_p1_button_left.in  = io_button[2];
+    btn_cond_p1_button_right.in = io_button[2];
     
+    //nat -- btn_cond_p2.in=io_button[3];
+    edge_dt_btn_p1up.in = btn_cond_p1_button_up.out; //get the edge of button press
+    edge_dt_btn_p1down.in = btn_cond_p1_button_down.out;
+    edge_dt_btn_p1left.in = btn_cond_p1_button_left.out;
+    edge_dt_btn_p1right.in = btn_cond_p1_button_right.out;
+    
+    gameMachine.p1_button_up = edge_dt_btn_p1up.out;
+    gameMachine.p1_button_down = edge_dt_btn_p1down.out;
+    gameMachine.p1_button_left = edge_dt_btn_p1left.out;
+    gameMachine.p1_button_right = edge_dt_btn_p1right.out;    
+    
+     
+    /* change per second
+    if (&counter.q){ // load new value when counter.q is all 1
+      rom_address.d = rom_address.q + 1; // advance ROM address by 1 the moment counter[27] (MSB) is 1
+    }*/
+       
+    //change when button pressed
+    if (start_button_edge.out){ // load new value when counter.q is all 1
+      rom_address.d = rom_address.q + 1; // advance ROM address by 1 the moment start_button is pressed
+    }
+    start_button.in = io_button[1]; // use this button to change map
+    start_button_edge.in = start_button.out;
+   
+    /*clear_button.in = io_button[2]; // use this button to turn off all LEDs 
+    clear_button_edge.in = clear_button.out;
+    
+    reverse_button.in = io_button[1]; // use this button to enable reverse
+    reverse_button_edge.in = reverse_button.out;*/
+       
+    ram.address = 0;        // address 0 selected by default
+    
+    movement_button.in = c{io_button[4], io_button[3], io_button[2], io_button[0]}; //right, left, down, up
+    movement_button_edge.in = movement_button.out;    
+    
+    // the sample matrix we use has top RIGHT as 0,0
+    // check player movement update 
+    // we assume a player is a 1x1 square, the coordinate stored in player_x_pos and player_y_pos indicate top right dot 
+    if (movement_button_edge.out[0]){
+      // clamp at 0
+      if (|player_y_pos.q){
+         player_y_pos.d = player_y_pos.q - 1; // up (because up decreases y coordinate in the RAM)
+      }
+    }
+    
+    if (movement_button_edge.out[1]){
+      // clamp 
+      if (player_y_pos.q < COLUMN_DIMENSION-2){
+      player_y_pos.d = player_y_pos.q + 1; // down (because down increases y coordinate in the RAM
+      }
+    }
+    
+    if (movement_button_edge.out[2]){ // io_button[3]
+      // clamp 
+      if (player_x_pos.q < COLUMN_DIMENSION-2){
+        player_x_pos.d = player_x_pos.q - 1; // left (check the orientation of your own matrix)
+      }
+    }
+    if (movement_button_edge.out[3]){ // io_button[4]
+      // clamp at 0 
+      if (|player_x_pos.q){
+        player_x_pos.d = player_x_pos.q + 1; // right (check the orientation of your own matrix)
+      }
+    }
 
     
-    // ****** INPUT SETTING ****** //
-    // a very crude way of testing the alu manually
-    // TODO: change this to suit your needs
-    // press button[0] to store 'a' value based on current dipswitches
-    // press button[1] to store 'b' value based on current dipswitches
-    // bit[24:17] of a,b always set to 0 for convenience
-    // press button[2] to store 'alufn' value based on io_dip[0][5:0] (6 rightmost dipswitch)
-    if (button_conditioner.out[0]){
-      // store a
-      a.d = c{io_dip[1], io_dip[0]}; // set io_dip[2] to dictate MSB 8 bits
+    // update the flag 
+    if (|movement_button_edge.out | start_button_edge.out){
+       update_ram_flag.d = 1;
     }
     
-    if (button_conditioner.out[1]){
-      // store b
-      b.d = c{io_dip[1], io_dip[0]}; // set io_dip[2] to dictate MSB 8 bits
-    }
+    // connect player location to RAM, set update as 0 initially
+    ram.player_x_pos = player_x_pos.q; 
+    ram.player_y_pos = player_y_pos.q;
+    ram.update = 0; 
+        
     
-    if (button_conditioner.out[2]){
-      // store alufn
-      alufn.d = io_dip[0][5:0];
-    }
     
-    // ****** OUTPUT SETTING ****** //
-    // TODO: change this to suit your needs
-    // io_led[0] shows the lowest 8 bit of ALU output at all times
-    // io_led[1] shows the highest 8 bit of ALU output at all times
-    // io_led[2][2:0] shows z,v,n at all times
-    io_led = c{{c{5b0, alu.z, alu.v, alu.n}}, {alu.out[15:8]}, {alu.out[7:0]}};   //originally {alu.out[31:24]}, changed to {alu.out[15:8]}
-  
-    //added the stuff below for FSM
-    button_conditioner.in = io_button[4:0];
-    edge_detector.in = button_conditioner.out[4:3];
-    case (alu_runner.q){
-        alu_runner.SET_A_16:
-          if (edge_detector.out[1]){
-            a.d = c{io_dip[1], io_dip[0]};
-            alu_runner.d = alu_runner.SET_B_16;
-          }
-          io_led[2][7] = 1;
+    /* ---------commented out for testing player movemnt ---------
+    // toggle matrix used button 
+    if (reverse_button_edge.out){
+      matrix_used.d = matrix_used.q + 1;
+    }
+    */ // ---------commented out for testing player movemnt ---------    
+    
+    led_strip.update = 0; // do not refresh by default
+    led_strip.clear = 0; // do not clear by default
+    
+    //led_strip_p2.update = 0; // do not refresh by default
+    //led_strip_p2.clear = 0; // do not clear by default
+       
+    // connect reverser to led_strip 
+    index_reverser.original_pixel_address = led_strip.pixel_address;
+    index_reverser.activate = 1; // we use led matrix here as example, always activate index reverser
+    
+    ram.address = 0;     
 
-                   
-        alu_runner.SET_B_16: 
-          if (edge_detector.out[1]){
-            b.d = c{io_dip[1], io_dip[0]};
-            alu_runner.d = alu_runner.SET_ALUFN;
-          }
-            io_led[2][6] = 1;         
-          
-        alu_runner.SET_ALUFN:
-          if(edge_detector.out[1]){
-            alufn.d = io_dip[0][5:0];
-            alu_runner.d = alu_runner.RUN;
-          }
-            io_led[2][5] = 1;
-          
-        alu_runner.RUN:
-          if(edge_detector.out[0]){
-            // set A again 
-            alu_runner.d = alu_runner.SET_A_16;
-          }    
-            io_led[2][4] = 1;
-}
+    // use io_dip[2:0]  to encode 12 unique pixel values at most (24 bits)
+    case (state.q){
+      state.IDLE:
+           if(~|counter.q){ // load new value when counter is all zero
+                temp_encoding.d = 8x{MAP_ROM[rom_address.q]};
+                state.d = state.LOAD;
+            }
+
+        if (update_ram_flag.q){ // if there's movement update or start button pressed
+            state.d = state.UPDATE_RAM;
+            ram.update = 1;  // send update signal to ram first, dont clear the update flag yet 
+        }
+        led[1:0] = b01;
+
+        // test reverser 
+        index_reverser.original_pixel_address = ram.debug_address_pointer;
+                
+        
+        /* ---------commented out for testing player movemnt ---------
+            if (clear_button_edge.out){
+                led_strip.clear = 1; 
+            }*/
+      
+        
+      state.LOAD:
+            // wait until we are at RESET state before we decide to refresh the screen
+            if (led_strip.reset){
+                // tell the LED to update the pixels
+                led_strip.update = 1;
+                led_encoding.d = temp_encoding.q;
+                state.d = state.IDLE;
+            }
+        
+      state.UPDATE_RAM:
+             // when ram is ready, and led is idling at RESET state, we load the strip
+             if (ram.ready & led_strip.reset){
+                // clear flag 
+                update_ram_flag.d = 0;
+                state.d = state.REFRESH;
+                ram.address = index_reverser.effective_pixel_address;
+                led_strip.update = 1;
+              }
+        
+        led[1:0] = b10;        
+    
+    
+      state.REFRESH:
+            // if at the last FPGA clock cycle for this bit, advance the address first because our RAM needs 1 additional clock cycle to work
+            if (led_strip.next_pixel){
+              index_reverser.original_pixel_address = led_strip.pixel_address + 1;
+            }
+      
+            // pass this to ram 
+            ram.address = index_reverser.effective_pixel_address;
+            
+            // wait until we are all done in updating our LED;
+            if (led_strip.done){
+                state.d = state.IDLE;
+            }
+            led[1:0] = b11;    
+    }
+    // connect reverser to led_strip 
+    index_reverser.original_pixel_address = led_strip.pixel_address;
+    index_reverser.writer_pixel_done = led_strip.next_pixel; //dk why error
+    index_reverser.activate = matrix_used.q;
+    encoded_pixel_address = index_reverser.effective_pixel_address * $clog2(ENCODING_AMOUNT);
+    
+    // led_strip.pixel_address will vary between 0000 to 1100 
+    // address 0 --> encoding bit 1:0 
+    // address 1 --> encoding bit 3:2 
+    // address 2 --> encoding bit 5
+    // address N --> encoding bit N*2+1:N*2
+    
+   // get current color encoding for this pixel
+    for (index=0; index<$clog2(ENCODING_AMOUNT); index++){
+       current_color_encoding[index] = led_encoding.q[encoded_pixel_address+index];
+    }
+    
+    // based on the encoding extracted from dff led_encoding, we get the 24bit color value
+    led_strip.color = LEDCOLOR[current_color_encoding]; // -- for playment movement 
+    //    led_strip.color = LEDCOLOR[ram.out_encoding];  -- for playment movement 
+    outled=led_strip.led;
+    
+    // debug 
+    // show the current LED color
+    io_led[0] = led_encoding.q[7:0];
+    io_led[1] = led_encoding.q[15:8];
+    io_led[2] = led_encoding.q[23:16];
+   
+    led[0] = matrix_used.q; 
+    led[7:1] = led_strip.pixel_address;
+    
+    // debug 
+    io_led[0] = c{player_y_pos.q, player_x_pos.q};
+   
+    io_led[2] = ram.debug_address_pointer;
+    io_led[1] = index_reverser.effective_pixel_address;
+   
+    io_led[2][7] = update_ram_flag.q;
+    led[7:5] = ram.debug_data;
+
+       
+    
+    
+    
+    
+    //show the counter value at led
+    
+       
+    /*io_led[2] = gameMachine.debug_out; 
+    io_led[0] = gameMachine.p1_out;    
+    io_led[1] = gameMachine.p2_out;
+    led[0] = gameMachine.debug_slowclock;
+    led[1] = gameMachine.debug_vcclock;
+    
+    //update 7segments
+    dec_ctr.inc = gameMachine.decimal_counter_increase;
+    dec_ctr.rst = gameMachine.decimal_counter_rst;
+    seg.values = dec_ctr.digits;
+    io_seg = ~seg.seg;
+    io_sel = ~seg.sel; */
+       
+    
+    
+    
+    
+  }
 }
