@@ -89,7 +89,7 @@ module data_ram #(
         ram.write_data = PLAYER_COLOR; // write player position (red)_
         //writer.d = writer.WRITE_TOP_LEFT;
         //writer.d = writer.CHECK;
-        writer.d = writer.IDLE;
+        writer.d = writer.CHECK;
         debug_data = b10;
        
       writer.CHECK:
