@@ -31,6 +31,7 @@ module data_ram #(
   
   const BACKGROUND_COLOR = b00;
   const PLAYER_COLOR = b11;
+  const LOSE_COLOR = b01;
   map_rom mapRom;
   simple_dual_ram ram(.rclk(clk), .wclk(clk), #DEPTH(DEPTH), #SIZE($clog2(ENCODING_AMOUNT)));
   var i;
