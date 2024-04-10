@@ -3,7 +3,7 @@ module map_rom#(
   ) (
     input map_num[2],
     //input address[$clog2(DEPTH)], // word addressing expected = 4 bits
-    output out_encoding[16]
+    output out_encoding[16][2]
   ) {
   
   const MAP_0_ROM = {
