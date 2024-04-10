@@ -103,13 +103,18 @@ module data_ram #(
         debug_data = b01;
         
       writer.LOSE:
-        ram.write_en = b1;
-        for (i=0; i<16;i++){ //flash all red
-          //if (writer_pointer.q == i){
-          ram.waddr = i;
-          ram.write_data = b01;
-          //}
+        ram.write_en = b1; 
+        ram.waddr = writer_pointer.q;
+        
+        for (i=0; i<16;i++){
+        if (writer_pointer.q == i){
+          ram.write_data = LOSE_COLOR;
+          }
         }
+        writer_pointer.d = writer_pointer.q + 1; 
+        debug_data = b001;
+        ram.raddr = address;
+        out_encoding = ram.read_data;
         
     
         
