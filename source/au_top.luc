@@ -42,6 +42,7 @@ module au_top (
   // for ROM encoding
 
   dff rom_address[$clog2(ROW_DIMENSION)](.clk(clk), #INIT(0), .rst(rst));
+
   
 
   // the data_ram, this is a custom data_ram for demonstration purposes
@@ -55,6 +56,7 @@ module au_top (
   dff player_x_pos[2](.clk(clk), #INIT(10), .rst(rst));
   dff player_y_pos[2](.clk(clk), #INIT(01), .rst(rst));
   dff update_ram_flag(.clk(clk), #INIT(0), .rst(rst));
+  dff start_ram_flag(.clk(clk), #INIT(0), .rst(rst));
   
 
   
@@ -91,18 +93,18 @@ module au_top (
     ram.address = 0;        // address 0 selected by default
     
     //init player pos based on map number
-      if (rom_address.q == 0){
+    /*  if (rom_address.q == 0){
     player_x_pos.d = b00;
     player_y_pos.d = b00;
-      }
+      }*/
     
     movement_button.in = c{io_button[4], io_button[3], io_button[2], io_button[0]}; // up, down, left, right
     movement_button_edge.in = movement_button.out;
     
     //start_button.in = io_button[1]; // use this button to enable reverse (its always 1)
-    if (start_button_edge.out){ // load new value when start button pressed
+    /*if (start_button_edge.out){ // load new value when start button pressed
       rom_address.d = rom_address.q + 1; // advance ROM address by 1 the moment start_button is pressed
-    }
+    }*/
     start_button.in = io_button[1]; // use this button to load map
     start_button_edge.in = start_button.out;
     //ram.start_button = start_button.out;
@@ -145,6 +147,12 @@ module au_top (
     //if (|movement_button_edge.out ){
        update_ram_flag.d = 1;
     }
+        //what i add
+    if (start_button_edge.out){
+       start_ram_flag.d = 1;
+    }
+    ram.start = 0; // what i add
+    
     
     // connect player location to RAM, set update as 0 initially
     ram.player_x_pos = player_x_pos.q; 
@@ -160,10 +168,10 @@ module au_top (
     index_reverser.activate = 1; // we use led matrix here as example, always activate index reverser
     
     //ram.address = 0; 
-    if (rst){
+    /*if (rst){
         state.d = state.IDLE; //starting state
     }
-    else{
+    else{*/
 
     // use io_dip[2:0]  to encode 12 unique pixel values at most (24 bits)
     case (state.q){
@@ -172,6 +180,7 @@ module au_top (
              if (ram.ready & led_strip.reset){
                 // clear flag 
                 update_ram_flag.d = 0;
+                start_ram_flag.d = 0; //what i add
                 state.d = state.REFRESH;
                 ram.address = index_reverser.effective_pixel_address;
                 led_strip.update = 1;
@@ -203,7 +212,14 @@ module au_top (
         if (update_ram_flag.q){ // if there's movement update
             state.d = state.UPDATE_RAM;
             ram.update = 1;  // send update signal to ram first, dont clear the update flag yet 
+        if (start_ram_flag.q){ //what i add
+            state.d = state.UPDATE_RAM;
+          ram.start =1;
+          player_x_pos.d =b00;
+          player_y_pos.d =b00;
         }
+
+            }
         led[1:0] = b01;
 
         // test reverser 
@@ -241,7 +257,7 @@ module au_top (
           }*/
 
     }
-    }
+    
 
 
     led_strip.color = LEDCOLOR[ram.out_encoding]; 
@@ -258,5 +274,5 @@ module au_top (
     
     led[3] = led_strip.reset;
     
-  }
+}
 }
