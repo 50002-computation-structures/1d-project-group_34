@@ -10,6 +10,7 @@ module data_ram #(
     input player_y_pos[2],
     input address[$clog2(ROW_DIMENSION*COLUMN_DIMENSION)],
     input start,
+    input map_num_au[2],
     output out_encoding[2],
     output ready,
     output debug_address_pointer[$clog2(ROW_DIMENSION*COLUMN_DIMENSION)],
@@ -45,7 +46,8 @@ module data_ram #(
     ram.waddr = 0;
     ram.write_data = 0;
     ram.write_en = 0;
-    mapRom.map_num = 0;
+    //mapRom.map_num = 1; // hardcoding it here affects the map
+    mapRom.map_num = map_num_au;
     //mapRom.map_num = au_top.rom_address;
 
 
@@ -66,6 +68,8 @@ module data_ram #(
     if (start_flag.q){ //what i add
     start_flag.d = 0;
     writer_pointer.d =0; //what i add
+    //counter.d =0;
+    //mapRom.map_num = map_num_au;  //what i add2 NOT WORK
     writer.d =writer.INIT;}
     else{
 
@@ -75,6 +79,7 @@ module data_ram #(
         
       writer.INIT: 
         writer_pointer.d =0; //will this do anything? no
+        
         ram.write_en = b1; 
         //start_flag.d = 0; //
         ram.waddr = writer_pointer.q;
@@ -88,13 +93,25 @@ module data_ram #(
         ram.write_data = mapRom.out_encoding[writer_pointer.q];
           
         writer_pointer.d = writer_pointer.q + 1; 
+        //counter.d = counter.q + 1; 
         if (&writer_pointer.q){
           // advanced to write 
           writer.d = writer.WRITE;
           // set writer pointer to player position 
           writer_pointer.d = player_y_pos*4 + player_x_pos;
-        }
+        }/*
+        if (&writer_pointer.q && &counter.q){
+           
+          // advanced to write 
+          writer.d = writer.WRITE;
+          // set writer pointer to player position 
+          writer_pointer.d = player_y_pos*4 + player_x_pos;
+        }*/
+             
+        //writer.CLEAR_MAP:
         
+          
+          
         
       writer.ERASE: 
         ram.write_en = b1; 
@@ -115,11 +132,11 @@ module data_ram #(
        
       writer.CHECK:
         ram.write_en = b0;
-        if (mapRom.out_encoding[writer_pointer.q] == b01){ //if current location is red,
+        if (mapRom.out_encoding[writer_pointer.q] == LOSE_COLOR){ //if current location is red,
           writer_pointer.d =0; //trying
           writer.d = writer.LOSE;
         }
-        else if (mapRom.out_encoding[writer_pointer.q] == b10){ //if current location is green,
+        else if (mapRom.out_encoding[writer_pointer.q] == WIN_COLOR){ //if current location is green,
           writer_pointer.d =0; //trying
           writer.d = writer.WIN;
         }    
@@ -134,12 +151,6 @@ module data_ram #(
         
         ram.write_en = b1; 
         ram.waddr = writer_pointer.q;
-        //writer_pointer.d =0; // try de
-        /*for (i=0; i<16;i++){
-        if (writer_pointer.q == i){
-          ram.write_data = LOSE_COLOR;
-          }
-        }*/
         ram.write_data = LOSE_COLOR;
         writer_pointer.d = writer_pointer.q + 1; 
         if (&writer_pointer.q){
@@ -151,17 +162,11 @@ module data_ram #(
         debug_data = b001;
         //ram.raddr = address;
         //out_encoding = ram.read_data;
-        
-      writer.WIN:
+          
+       writer.WIN:
         
         ram.write_en = b1; 
         ram.waddr = writer_pointer.q;
-        //writer_pointer.d =0; // try de
-        /*for (i=0; i<16;i++){
-        if (writer_pointer.q == i){
-          ram.write_data = LOSE_COLOR;
-          }
-        }*/
         ram.write_data = WIN_COLOR;
         writer_pointer.d = writer_pointer.q + 1; 
         if (&writer_pointer.q){
@@ -170,7 +175,8 @@ module data_ram #(
             update_flag.d = 0;}
           
         
-        debug_data = b001;   
+        debug_data = b001; 
+    
         
       /*writer.CHECK:
         ram.raddr = address;
