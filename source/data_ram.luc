@@ -24,6 +24,7 @@ module data_ram #(
     ERASE, 
     CHECK,
     LOSE,
+    WIN,
     IDLE
     };
   dff writer_pointer[$clog2(DEPTH)](#INIT(0),.clk(clk), .rst(rst));
@@ -34,6 +35,7 @@ module data_ram #(
   const BACKGROUND_COLOR = b00;
   const PLAYER_COLOR = b11;
   const LOSE_COLOR = b01;
+  const WIN_COLOR = b10; 
   map_rom mapRom;
   simple_dual_ram ram(.rclk(clk), .wclk(clk), #DEPTH(DEPTH), #SIZE($clog2(ENCODING_AMOUNT)));
   var i;
@@ -117,6 +119,11 @@ module data_ram #(
           writer_pointer.d =0; //trying
           writer.d = writer.LOSE;
         }
+        else if (mapRom.out_encoding[writer_pointer.q] == b10){ //if current location is green,
+          writer_pointer.d =0; //trying
+          writer.d = writer.WIN;
+        }    
+            
         else{
         writer.d = writer.IDLE;
         //writer_pointer.d = player_y_pos*4 + player_x_pos;
@@ -145,7 +152,25 @@ module data_ram #(
         //ram.raddr = address;
         //out_encoding = ram.read_data;
         
-    
+      writer.WIN:
+        
+        ram.write_en = b1; 
+        ram.waddr = writer_pointer.q;
+        //writer_pointer.d =0; // try de
+        /*for (i=0; i<16;i++){
+        if (writer_pointer.q == i){
+          ram.write_data = LOSE_COLOR;
+          }
+        }*/
+        ram.write_data = WIN_COLOR;
+        writer_pointer.d = writer_pointer.q + 1; 
+        if (&writer_pointer.q){
+          writer.d =writer.IDLE;
+            writer_pointer.d = 0;
+            update_flag.d = 0;}
+          
+        
+        debug_data = b001;   
         
       /*writer.CHECK:
         ram.raddr = address;
