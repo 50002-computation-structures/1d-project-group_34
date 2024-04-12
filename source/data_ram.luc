@@ -48,11 +48,7 @@ module data_ram #(
     ram.waddr = 0;
     ram.write_data = 0;
     ram.write_en = 0;
-    //mapRom.map_num = 1; // hardcoding it here affects the map
     mapRom.map_num = map_num_au;
-    //mapRom.map_num = au_top.rom_address;
-    //clear =0; //clear is 0 by default
-    //clear_flag.d = 0; //clear edit
     clear_to_au = 0;
 
 
@@ -74,9 +70,6 @@ module data_ram #(
     if (start_flag.q){ //what i add
     start_flag.d = 0;
     writer_pointer.d =0; //what i add
-    //counter.d =0;
-    //mapRom.map_num = map_num_au;  //what i add2 NOT WORK
-    //writer.d =writer.CLEAR;}
     writer.d =writer.INIT;}    
     else{
 
@@ -104,18 +97,9 @@ module data_ram #(
           counter.d = 0;
           writer_pointer.d =player_y_pos*4 + player_x_pos; //to prevent erase at wrong place
           writer.d=writer.IDLE; //does the position of this line of code matter? NO
-          // advanced to write 
-          //writer.d = writer.WRITE;
-          // set writer pointer to player position 
-          //writer_pointer.d = player_y_pos*4 + player_x_pos;
-        }/*
-        if (&writer_pointer.q && &counter.q){
-           
-          // advanced to write 
-          writer.d = writer.WRITE;
-          // set writer pointer to player position 
-          writer_pointer.d = player_y_pos*4 + player_x_pos;
-        }*/
+
+        }
+
              
         writer.CLEAR:
 
@@ -153,8 +137,6 @@ module data_ram #(
         ram.write_en = b1; // enable the dual ram write
         ram.waddr = writer_pointer.q; // write to the respective address
         ram.write_data = PLAYER_COLOR; // write player position (red)_
-        //writer.d = writer.WRITE_TOP_LEFT;
-        //writer.d = writer.CHECK;
         writer.d = writer.CHECK;
         debug_data = b100;
        
@@ -190,8 +172,6 @@ module data_ram #(
           
         
         debug_data = b110;
-        //ram.raddr = address;
-        //out_encoding = ram.read_data;
           
        writer.WIN:
         
@@ -204,34 +184,6 @@ module data_ram #(
             writer_pointer.d = 0;
             update_flag.d = 0;}
           
-        
-        //debug_data = b111; 
-    
-        
-      /*writer.CHECK:
-        ram.raddr = address;
-        //out_encoding = ram.read_data;
-        ram.write_en = b1; 
-        ram.waddr = writer_pointer.q;
-        
-        if (mapRom.out_encoding[writer_pointer.q] == b01){
-        if (ram.read_data == b01){ //red
-          for (i=0; i<16;i++){ //flash all red
-          if (writer_pointer.q == i){
-            ram.write_data = b01;
-            }
-       }}
-          if (ram.read_data == b10){ //green
-          for (i=0; i<16;i++){ //flash all green
-          if (writer_pointer.q == i){
-            ram.write_data = b10;
-            }
-       }}
-          writer_pointer.d = writer_pointer.q + 1; 
-            if (&writer_pointer.q){
-          writer.d = writer.IDLE;
-          writer_pointer.d = player_y_pos*4 + player_x_pos;}*/
-        
           
       writer.IDLE:
         //clear = 0;
@@ -254,28 +206,6 @@ module data_ram #(
            //clear_to_au = 1;
           writer.d = writer.CLEAR;}
         
-        /*        
-        //counter.d = counter.q + 1;
-        if (&counter.q){
-            //clear edit
-            //clear = 1; this one doesn't clear all the map data_ram
-            writer_pointer.d =0; //will this do anything? no
-            ram.write_en = b1; 
-            ram.waddr = writer_pointer.q;
-            ram.write_data = BACKGROUND_COLOR; 
-            writer_pointer.d = writer_pointer.q + 1; 
-              
-        
-        //counter.d = counter.q + 1; 
-        if (&writer_pointer.q){
-            clear_flag.d = 0; 
-            writer.d = writer.WRITE;
-            writer_pointer.d =player_y_pos*4 + player_x_pos;
-              } 
-        } 
-          */
-              
-        //debug_data = c{b11, update_flag.q};
       
     }
     
