@@ -12,7 +12,7 @@ module au_top (
     input io_dip [3][8]     // DIP switches on IO Shield //just keep the yellow line
   ) {
   
-  // We test on an 8x8 WS2812B matrix, please change as required
+  // We use a 4x4 WS2812B matrix
   // We shall always assume that COLUMN_DIMENSION and ROW_DIMENSION is a 2^x
   const COLUMN_DIMENSION = 4; // how many "columns"? 
   const ROW_DIMENSION = 4; // how many "rows"?
@@ -24,26 +24,9 @@ module au_top (
   // WHITE (11): START/PLAYER, GREEN (10): GOAL,  RED (01): RESTRICTED, BLACK (00): NOTHING
   const LEDCOLOR = {24hFFFFFF, 24h0000FF, 24h00FF00, 24h000000}; 
   sig rst; // reset signal
-  /*//rom things start
-  const MAP_ROM = { //will cycle from map 0 to map 2, dont need check if map 2 then make it 1
-    32b00000010000101000001000011000001, //map2 (1111) to 0000 but encoding still normal
-    32b00100111000100000001000100000001, //map 1
-    32b01000000000001000001010000100111 //map 0
-  };
-
-  sig encoded_pixel_address[$clog2(PIXEL_COUNT)*$clog2(ENCODING_AMOUNT)];
-  sig current_color_encoding[$clog2(ENCODING_AMOUNT)];
-
-  var index;
-  
-  dff led_encoding[PIXEL_COUNT*$clog2(ENCODING_AMOUNT)](.clk(clk), .rst(rst), #INIT(16x{MAP_ROM[0]})); // 2 bit to encode a color per pixel
-  dff temp_encoding[PIXEL_COUNT*$clog2(ENCODING_AMOUNT)](.clk(clk), .rst(rst), #INIT(0)); // holds temporary value (double buffering)
-  */
-  // for ROM encoding
 
   dff rom_address[$clog2(ROW_DIMENSION)](.clk(clk), #INIT(1), .rst(rst));
 
-  
 
   // the data_ram, this is a custom data_ram for demonstration purposes
   // along with custom "player location"
@@ -53,8 +36,8 @@ module au_top (
   // right ---> x ++
   // left ---> x -- 
   // down ---> y++ 
-  dff player_x_pos[2](.clk(clk), #INIT(10), .rst(rst));
-  dff player_y_pos[2](.clk(clk), #INIT(01), .rst(rst));
+  dff player_x_pos[2](.clk(clk), #INIT(00), .rst(rst));
+  dff player_y_pos[2](.clk(clk), #INIT(00), .rst(rst));
   dff update_ram_flag(.clk(clk), #INIT(0), .rst(rst));
   dff start_ram_flag(.clk(clk), #INIT(0), .rst(rst));
   
@@ -97,17 +80,11 @@ module au_top (
     movement_button.in = c{io_button[4], io_button[3], io_button[2], io_button[0]}; // up, down, left, right
     movement_button_edge.in = movement_button.out;
     
-    //start_button.in = io_button[1]; // use this button to enable reverse (its always 1)
-    /*if (start_button_edge.out){ // load new value when start button pressed
-      rom_address.d = rom_address.q + 1; // advance ROM address by 1 the moment start_button is pressed
-    }*/
     start_button.in = io_button[1]; // use this button to load map
     start_button_edge.in = start_button.out;
-    //ram.start_button = start_button.out;
     
-    // the sample matrix we use has top RIGHT as 0,0
+    // the matrix we use has top left as 0,0
     // check player movement update 
-    // we assume a player is a 2x2 square, the coordinate stored in player_x_pos and player_y_pos indicate top right dot 
     if (movement_button_edge.out[0]){
       // clamp at 0
       if (|player_y_pos.q){
@@ -125,7 +102,6 @@ module au_top (
     if (movement_button_edge.out[2]){ // io_button[3]
       // clamp 
       if (|player_x_pos.q){ ////player_x_pos.q not 0 can move left
-      //if (player_x_pos.q < COLUMN_DIMENSION-1){
         player_x_pos.d = player_x_pos.q - 1; // left (check the orientation of your own matrix)
       }
     }
@@ -168,11 +144,6 @@ module au_top (
     index_reverser.writer_pixel_done = led_strip.next_pixel;
     index_reverser.activate = 1; // we use led matrix here as example, always activate index reverser
     
-    //ram.address = 0; 
-    /*if (rst){
-        state.d = state.IDLE; //starting state
-    }
-    else{*/
 
     // use io_dip[2:0]  to encode 12 unique pixel values at most (24 bits)
     case (state.q){
@@ -205,11 +176,7 @@ module au_top (
             led[1:0] = b11;
         
      state.IDLE:
-        //if(~|counter.q){ // load new value when counter is all zero
-        /*if(start_button_edge.out){ //when start button press, show map
-           temp_encoding.d = 8x{MAP_ROM[rom_address.q]};
-           state.d = state.LOAD_MAP;
-            }*/
+
         if (update_ram_flag.q){ // if there's movement update
             state.d = state.UPDATE_RAM;
             ram.update = 1;  // send update signal to ram first, dont clear the update flag yet 
@@ -227,46 +194,16 @@ module au_top (
               else if (rom_address.q == 2){
           player_x_pos.d =b11;
           player_y_pos.d =b00;}
-              
-              
-        }
+   
+        }}
+          if(ram.clear_to_au){
+            state.d = state.UPDATE_RAM;}
 
-            }
+            
         led[1:0] = b01;
 
         // test reverser 
         index_reverser.original_pixel_address = ram.debug_address_pointer;
-     /*   
-     state.LOAD_MAP:
-        // wait until we are at RESET state before we decide to refresh the screen
-        if (led_strip.reset){
-            // tell the LED to update the pixels
-            led_strip.update = 1;
-            led_encoding.d = temp_encoding.q;
-            encoded_pixel_address = index_reverser.effective_pixel_address * $clog2(ENCODING_AMOUNT);
-            // get current color encoding for this pixel
-            for (index=0; index<$clog2(ENCODING_AMOUNT); index++){
-               current_color_encoding[index] = led_encoding.q[encoded_pixel_address+index];
-            }
-            
-            // based on the encoding extracted from dff led_encoding, we get the 24bit color value
-            led_strip.color = LEDCOLOR[current_color_encoding];
-            outled = led_strip.led;
-            //state.d = state.CLEAR_MAP;
-            
-            
-        }
-          led[2] = b1; //check if we are in LOAD_MAP state
-        if (start_button_edge.out){
-          state.d = state.IDLE;}*/
-      /*  
-      state.CLEAR_MAP:
-        counter.d =0;
-        counter.d = counter.q+1; //for rom, wait 1 sec then clear map
-        if (&counter.q && led_strip.done){ // when 27 bits of counter is all one
-          led_strip.clear = 1;
-          state.d = state.IDLE;
-          }*/
 
     }
     
@@ -282,7 +219,7 @@ module au_top (
     io_led[1] = index_reverser.effective_pixel_address;
    
     io_led[2][7] = update_ram_flag.q;
-    led[7:4] = ram.debug_data;
+    led[7:5] = ram.debug_data;
     
     led[3] = led_strip.reset;
     

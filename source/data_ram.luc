@@ -13,7 +13,7 @@ module data_ram #(
     input map_num_au[2],
     output out_encoding[2],
     output ready,
-    //output clear,
+    output clear_to_au,
     output debug_address_pointer[$clog2(ROW_DIMENSION*COLUMN_DIMENSION)],
     output debug_data[3]
   ) {
@@ -52,7 +52,8 @@ module data_ram #(
     mapRom.map_num = map_num_au;
     //mapRom.map_num = au_top.rom_address;
     //clear =0; //clear is 0 by default
-    clear_flag.d = 0; //clear edit
+    //clear_flag.d = 0; //clear edit
+    clear_to_au = 0;
 
 
     out_encoding = 0;
@@ -75,7 +76,8 @@ module data_ram #(
     writer_pointer.d =0; //what i add
     //counter.d =0;
     //mapRom.map_num = map_num_au;  //what i add2 NOT WORK
-    writer.d =writer.INIT;}
+    //writer.d =writer.CLEAR;}
+    writer.d =writer.INIT;}    
     else{
 
     case (writer.q){
@@ -124,18 +126,16 @@ module data_ram #(
           ram.write_data = BACKGROUND_COLOR; 
           writer_pointer.d = writer_pointer.q + 1; 
           debug_data = b010;  
+          clear_flag.d = 0; //TRYIGNGNNGNG
           //counter.d = counter.q + 1; 
           if (&writer_pointer.q){
+              //clear_to_au = 0;
+              clear_to_au = 1;
               debug_data = b010; 
-              clear_flag.d = 0; 
-              //writer.d = writer.WRITE; //TESTING IF IT GOES TO CLEAR
+              writer.d = writer.WRITE; //TESTING IF IT GOES TO CLEAR
               writer_pointer.d =player_y_pos*4 + player_x_pos;
                 } 
-           
-        
-        
-          
-          
+
         
       writer.ERASE: 
         //clear = 0; //clear edit
@@ -205,7 +205,7 @@ module data_ram #(
             update_flag.d = 0;}
           
         
-        debug_data = b111; 
+        //debug_data = b111; 
     
         
       /*writer.CHECK:
@@ -238,17 +238,20 @@ module data_ram #(
         //clear_flag.d = 0; //clear edit ???
         ram.raddr = address;
         out_encoding = ram.read_data;
-        debug_data = b1000; // for debugging
+        debug_data = b111;  // for debugging
         writer.d = writer.IDLE; // remain in state
+        //clear_to_au = 0; //COMMENT NEXT TO CHECK IF IT EVER CLEARS
         if (update_flag.q){
             update_flag.d = 0;
             writer.d = writer.ERASE;
             //writer_pointer.d =player_y_pos*4 + player_x_pos; //to prevent erase at wrong place sorry this one very weird: trailing player
         }
-          
+
         if(clear_flag.q){
           counter.d = counter.q + 1;
           if (&counter.q){
+           writer_pointer.d =0;
+           //clear_to_au = 1;
           writer.d = writer.CLEAR;}
         
         /*        
