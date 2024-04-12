@@ -41,7 +41,7 @@ module au_top (
   */
   // for ROM encoding
 
-  dff rom_address[$clog2(ROW_DIMENSION)](.clk(clk), #INIT(0), .rst(rst));
+  dff rom_address[$clog2(ROW_DIMENSION)](.clk(clk), #INIT(1), .rst(rst));
 
   
 
@@ -91,12 +91,8 @@ module au_top (
     io_sel = 4hf;           // select no digits
     
     ram.address = 0;        // address 0 selected by default
+    ram.map_num_au = 0;
     
-    //init player pos based on map number
-    /*  if (rom_address.q == 0){
-    player_x_pos.d = b00;
-    player_y_pos.d = b00;
-      }*/
     
     movement_button.in = c{io_button[4], io_button[3], io_button[2], io_button[0]}; // up, down, left, right
     movement_button_edge.in = movement_button.out;
@@ -107,7 +103,6 @@ module au_top (
     }*/
     start_button.in = io_button[1]; // use this button to load map
     start_button_edge.in = start_button.out;
-    ram.map_num_au =0;
     //ram.start_button = start_button.out;
     
     // the sample matrix we use has top RIGHT as 0,0
@@ -145,12 +140,15 @@ module au_top (
     
     // update the flag 
     if (|movement_button_edge.out | start_button_edge.out){
-    //if (|movement_button_edge.out ){
+    //if (|movement_button_edge.out ){ //doesnt work
        update_ram_flag.d = 1;
     }
         //what i add
     if (start_button_edge.out){
        start_ram_flag.d = 1;
+      if (rom_address.q < 2){
+      rom_address.d = rom_address.q + 1;}
+      else{rom_address.d =0;}
     }
     ram.start = 0; // what i add
     
@@ -158,9 +156,11 @@ module au_top (
     // connect player location to RAM, set update as 0 initially
     ram.player_x_pos = player_x_pos.q; 
     ram.player_y_pos = player_y_pos.q;
+    ram.map_num_au = rom_address.q;
     ram.update = 0; 
     
     led_strip.update = 0; // do not refresh by default
+    //led_strip.clear = ram.clear; // do not clear by default //clear edit
     led_strip.clear = 0; // do not clear by default
     
     // connect reverser to led_strip 
@@ -216,8 +216,19 @@ module au_top (
         if (start_ram_flag.q){ //what i add
             state.d = state.UPDATE_RAM;
           ram.start =1;
+            //update_ram_flag.d=1; //is this here?
+            //ram.map_num_au = rom_address.q; //not working?
+            if (rom_address.q == 0){
           player_x_pos.d =b00;
-          player_y_pos.d =b00;
+          player_y_pos.d =b00;}
+           else if (rom_address.q == 1){
+          player_x_pos.d =b00;
+          player_y_pos.d =b11;}
+              else if (rom_address.q == 2){
+          player_x_pos.d =b11;
+          player_y_pos.d =b00;}
+              
+              
         }
 
             }
