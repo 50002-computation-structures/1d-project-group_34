@@ -107,6 +107,7 @@ module au_top (
     }*/
     start_button.in = io_button[1]; // use this button to load map
     start_button_edge.in = start_button.out;
+    ram.map_num_au =0;
     //ram.start_button = start_button.out;
     
     // the sample matrix we use has top RIGHT as 0,0
