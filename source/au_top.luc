@@ -60,7 +60,7 @@ module au_top (
   ws2812b_writer led_strip_p1(#PIXEL_COUNT(PIXEL_COUNT), .clk(clk), .rst(rst)); 
   ws2812b_writer led_strip_p2(#PIXEL_COUNT(PIXEL_COUNT), .clk(clk), .rst(rst)); 
   
-  fsm state(.clk(clk), .rst(rst)) = {IDLE, UPDATE_RAM_P1, REFRESH_P1, UPDATE_RAM_P2, REFRESH_P2};
+  fsm state(.clk(clk), .rst(rst)) = {IDLE, UPDATE_RAM_P1, REFRESH_P1, UPDATE_RAM_P2, REFRESH_P2, WAIT};
   
   reverser index_reverser1(#COLUMN_DIMENSION(COLUMN_DIMENSION), #ROW_DIMENSION(ROW_DIMENSION), .clk(clk), .rst(rst));
   reverser index_reverser2(#COLUMN_DIMENSION(COLUMN_DIMENSION), #ROW_DIMENSION(ROW_DIMENSION), .clk(clk), .rst(rst));
@@ -97,7 +97,14 @@ module au_top (
     ram_p2.address = 0;        // address 0 selected by default
     ram_p2.map_num_au = 0;
     ram_p1.clear =0;
-     ram_p2.clear =0;
+    ram_p2.clear =0;
+    
+    led_strip_p1.color = LEDCOLOR[b11];
+
+    /*ram_p1.u_lost=0;
+    ram_p1.u_won=0;
+    ram_p2.u_lost=0;
+    ram_p2.u_won=0;*/
     
     
     p1_movement_button.in = c{io_button[4], io_button[3], io_button[2], io_button[0]}; // right, left, down, up
@@ -182,6 +189,7 @@ module au_top (
     if (start_button_edge.out){
        start_ram_p1_flag.d = 1;
       start_ram_p2_flag.d = 1;
+      //CMPEQ input a: rom_address.q, b:2//output 1 or 0
       if (rom_address.q < 2){
       rom_address.d = rom_address.q + 1;}
       else{rom_address.d =0;}
@@ -244,6 +252,9 @@ module au_top (
                   state.d = state.REFRESH_P2;
                   ram_p2.address = index_reverser2.effective_pixel_address;
                   led_strip_p2.update = 1;
+                  
+          
+          
                 }
         
         led[2:0] = b010;
@@ -269,6 +280,10 @@ module au_top (
             }
            //if(ram_p2.clear_to_au){ //does this position work? it makes p1 clear but not p2
                 //state.d = state.UPDATE_RAM_P2;}
+          /*  if(ram_p2.i_lost|ram_p2.i_won){
+            state.d = state.UPDATE_RAM_P2;  }*/
+        
+        
             led[2:0] = b011;
         
       state.REFRESH_P2:
@@ -290,6 +305,8 @@ module au_top (
           //ram_p2.clear =1;
                  
           }
+            /*if(ram_p1.i_lost|ram_p1.i_won){
+            state.d = state.UPDATE_RAM_P1;  }*/
             led[2:0] = b100;
         
      state.IDLE:
@@ -321,6 +338,8 @@ module au_top (
           if(ram_p2.clear_to_au){
             state.d = state.UPDATE_RAM_P2;
           ram_p1.clear =1;}
+          
+         
 
             
         //led[1:0] = b01;
@@ -343,7 +362,64 @@ module au_top (
           p2_y_pos.d =b00;}
    
         }}
+       
+        
+        /* if (ram_p1.i_lost | ram_p2.i_won){ //try again
+    led_strip_p1.color=LEDCOLOR[b11];
+    led_strip_p2.color=LEDCOLOR[b10];
+      led_strip_p1.update =1;
+      led_strip_p2.update =1;
+      if (led_strip_p1.done && led_strip_p2.done){
+      outled = led_strip_p1.led;
+      outled2 = led_strip_p2.led;}
+      }
+      
+    else if(ram_p2.i_lost | ram_p1.i_won){
+    led_strip_p2.color=LEDCOLOR[b01];
+    led_strip_p1.color=LEDCOLOR[b10];
+      led_strip_p1.update =1;
+      led_strip_p2.update =1;
+      if (led_strip_p1.done && led_strip_p2.done){
+      outled = led_strip_p1.led;
+      
+      outled2 = led_strip_p2.led;}
+      }*/
+        
+    
 
+    
+        
+       /*   if(ram_p1.i_won|ram_p2.i_lost){
+        ram_p1.u_lost=1;
+        ram_p2.u_won=1;
+          state.d = state.WAIT;}
+          
+        
+        if(ram_p1.i_lost|ram_p2.i_won){
+        ram_p2.u_lost =1;
+        ram_p1.u_won =1;
+          state.d = state.WAIT;
+         }*/
+       /* if (ram_p1.i_lost || ram_p2.i_won){
+        led_strip_p1.color=LEDCOLOR[b01];
+        led_strip_p2.color=LEDCOLOR[b10];
+          outled = led_strip_p1.led;
+          outled2 = led_strip_p2.led;
+          state.d = state.q;}
+          
+        if (ram_p2.i_lost || ram_p1.i_won){
+        led_strip_p2.color=LEDCOLOR[b01];
+        led_strip_p1.color=LEDCOLOR[b10];
+          outled = led_strip_p1.led;
+          outled2 = led_strip_p2.led;
+          state.d = state.q;}*/
+           
+      /*state.WAIT:
+        state.d = state.UPDATE_RAM_P2;
+        */ 
+
+          
+                              
 
             
         led[2:0] = b101;
@@ -352,16 +428,76 @@ module au_top (
         index_reverser1.original_pixel_address = ram_p1.debug_address_pointer;
 
     }
-    
 
 
-    led_strip_p1.color = LEDCOLOR[ram_p1.out_encoding]; 
+
+    /*led_strip_p1.color = LEDCOLOR[ram_p1.out_encoding]; 
     //led_strip_p1.color = LEDCOLOR[01]; //try if this affects anything, always show all red YES
     outled = led_strip_p1.led;
     
     led_strip_p2.color = LEDCOLOR[ram_p2.out_encoding]; 
+    outled2 = led_strip_p2.led;*/
+    
+    /*led_strip_p1.color = LEDCOLOR[ram_p1.out_encoding]; 
+    //led_strip_p1.color = LEDCOLOR[01]; //try if this affects anything, always show all red YES
+    outled = led_strip_p1.led;
+    
+    led_strip_p2.color = LEDCOLOR[ram_p2.out_encoding]; 
+    outled2 = led_strip_p2.led;*/
+    
+    /*if (ram_p1.i_lost | ram_p2.i_won){ //try again
+    led_strip_p1.color=LEDCOLOR[b11];
+    led_strip_p2.color=LEDCOLOR[b10];
+      led_strip_p1.update =1;
+      led_strip_p2.update =1;
+      if (led_strip_p1.done && led_strip_p2.done){
+      outled = led_strip_p1.led;
+      outled2 = led_strip_p2.led;}
+      }
+      
+    else if(ram_p2.i_lost | ram_p1.i_won){
+    led_strip_p2.color=LEDCOLOR[b01];
+    led_strip_p1.color=LEDCOLOR[b10];
+      led_strip_p1.update =1;
+      led_strip_p2.update =1;
+      if (led_strip_p1.done && led_strip_p2.done){
+      outled = led_strip_p1.led;
+      
+      outled2 = led_strip_p2.led;}
+      }*/
+       
+    led_strip_p2.color = LEDCOLOR[ram_p2.out_encoding]; 
+    led_strip_p1.color = LEDCOLOR[ram_p1.out_encoding];
+      
+    if (ram_p1.i_lost){
+    led_strip_p1.update =1;
+    led_strip_p2.update =1;
+    led_strip_p1.color = LEDCOLOR[b01]; //01 is red
+    led_strip_p2.color =  LEDCOLOR[b10]; //10 is green 
+    
+    } 
+    
+    if(ram_p2.i_won){
+    led_strip_p1.update =1;
+    led_strip_p2.update =1;
+    led_strip_p1.color = LEDCOLOR[b01]; //01 is red
+    led_strip_p2.color =  LEDCOLOR[b10]; //10 is green
+      }
+    
+    if (ram_p1.i_won){
+    led_strip_p1.update =1;
+    led_strip_p2.update =1;
+    led_strip_p1.color = LEDCOLOR[b10]; //10 is green
+    led_strip_p2.color = LEDCOLOR[b01];} //01 is red
+      
+    if (ram_p2.i_lost){
+    led_strip_p1.update =1;
+    led_strip_p2.update =1;
+    led_strip_p1.color = LEDCOLOR[b10]; //10 is green
+    led_strip_p2.color =  LEDCOLOR[b01];} //01 is red
+      
+    outled = led_strip_p1.led;
     outled2 = led_strip_p2.led;
-
     // debug 
     io_led[0] = c{p1_y_pos.q, p1_x_pos.q};
    

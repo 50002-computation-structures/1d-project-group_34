@@ -12,9 +12,13 @@ module data_ram #(
     input start,
     input clear,
     input map_num_au[2],
+    //input u_won,
+    //input u_lost,
     output out_encoding[2],
     output ready,
     output clear_to_au,
+    output i_lost,
+    output i_won,
     //output running,
     output debug_address_pointer[$clog2(ROW_DIMENSION*COLUMN_DIMENSION)],
     output debug_data[3]
@@ -35,6 +39,8 @@ module data_ram #(
   dff update_flag(#INIT(0), .clk(clk), .rst(rst));
   dff start_flag(#INIT(0), .clk(clk), .rst(rst));
   dff clear_flag(#INIT(0), .clk(clk), .rst(rst)); //clear
+  //dff u_lost_flag(#INIT(0), .clk(clk), .rst(rst));
+  //dff u_won_flag(#INIT(0), .clk(clk), .rst(rst));
   dff counter[27](.clk(clk), .rst(rst), #INIT(0)); //can use to stop flashing map
   
   const BACKGROUND_COLOR = b00;
@@ -52,6 +58,8 @@ module data_ram #(
     ram.write_en = 0;
     mapRom.map_num = map_num_au;
     clear_to_au = 0;
+    i_lost =0;
+    i_won =0;
     //running = 1;
 
 
@@ -74,6 +82,27 @@ module data_ram #(
     if (clear){ //what i add
       clear_flag.d = clear;
     }
+    
+    /*if (u_lost){
+      u_lost_flag.d = u_lost;
+      //if all green shows
+    }
+     if (u_won){
+      u_won_flag.d = u_won;
+      
+    }
+    
+    if (u_won_flag.q){ //what i add
+    u_won_flag.d = 0;
+    writer_pointer.d =0;
+    writer.d =writer.LOSE;}
+    
+    if (u_lost_flag.q){ //what i add
+    u_lost_flag.d = 0;
+    writer_pointer.d =0;
+    writer.d =writer.WIN;}*/
+    
+    
     if (start_flag.q){ //what i add
     start_flag.d = 0;
     writer_pointer.d =0; //what i add
@@ -94,6 +123,9 @@ module data_ram #(
         //counter.d = counter.q + 1; 
           clear_flag.d = 1; //clear 
           debug_data = b001;
+          
+          i_lost =0;
+          i_won =0;
         if (&writer_pointer.q){
           debug_data = b001;
           //ram.raddr = address; //PLS DONT DO THIS
@@ -167,15 +199,17 @@ module data_ram #(
         debug_data = b100;
         
       writer.LOSE:
-        
-        ram.write_en = b1; 
+        i_lost =1;
+        //writer.d=writer.IDLE;
+        /*ram.write_en = b1; 
         ram.waddr = writer_pointer.q;
         ram.write_data = LOSE_COLOR;
         writer_pointer.d = writer_pointer.q + 1; 
        if (&writer_pointer.q){
+          i_lost =1;
           writer.d =writer.IDLE;
             writer_pointer.d = 0;
-            update_flag.d = 0;}
+            update_flag.d = 0;}    */
         /*if (&writer_pointer.q){
         writer.d = writer.LOSE;     
         ram.raddr = address;
@@ -186,18 +220,26 @@ module data_ram #(
         debug_data = b110;
           
        writer.WIN:
-        
-        ram.write_en = b1; 
+        i_won =1;
+        //writer.d=writer.IDLE;
+        /*ram.write_en = b1; 
         ram.waddr = writer_pointer.q;
         ram.write_data = WIN_COLOR;
         writer_pointer.d = writer_pointer.q + 1; 
         if (&writer_pointer.q){
+          i_won =1;
           writer.d =writer.IDLE;
             writer_pointer.d = 0;
-            update_flag.d = 0;}
+            update_flag.d = 0;}*/
           
           
       writer.IDLE:
+        if (writer.q == writer.LOSE){
+          i_lost =1;}
+        if (writer.q == writer.WIN){
+          i_won =1;}
+        //i_won =0;
+        //i_lost =0;
         //clear = 0;
         //clear_flag.d = 0; //clear edit ???
         ram.raddr = address;
