@@ -10,10 +10,12 @@ module data_ram #(
     input player_y_pos[2],
     input address[$clog2(ROW_DIMENSION*COLUMN_DIMENSION)],
     input start,
+    input clear,
     input map_num_au[2],
     output out_encoding[2],
     output ready,
     output clear_to_au,
+    //output running,
     output debug_address_pointer[$clog2(ROW_DIMENSION*COLUMN_DIMENSION)],
     output debug_data[3]
   ) {
@@ -41,7 +43,7 @@ module data_ram #(
   const WIN_COLOR = b10; 
   map_rom mapRom;
   simple_dual_ram ram(.rclk(clk), .wclk(clk), #DEPTH(DEPTH), #SIZE($clog2(ENCODING_AMOUNT)));
-  var i;
+  //var i;
   
   always {
     ram.raddr = 0;
@@ -50,6 +52,7 @@ module data_ram #(
     ram.write_en = 0;
     mapRom.map_num = map_num_au;
     clear_to_au = 0;
+    //running = 1;
 
 
     out_encoding = 0;
@@ -57,6 +60,7 @@ module data_ram #(
     
     //ready = writer.q == writer.IDLE | writer.LOSE; //what i add
     ready = writer.q == writer.IDLE; 
+    //running = writer.q != writer.LOSE;
     //ready = writer.q == writer.IDLE | writer.INIT; 
     debug_address_pointer = writer_pointer.q;
     
@@ -67,11 +71,14 @@ module data_ram #(
     if (start){ //what i add
       start_flag.d = start;
     }
+    if (clear){ //what i add
+      clear_flag.d = clear;
+    }
     if (start_flag.q){ //what i add
     start_flag.d = 0;
     writer_pointer.d =0; //what i add
     writer.d =writer.INIT;}    
-    else{
+    else{ //should keep this
 
     case (writer.q){
         /*writer.CLEAR: //what i add
@@ -165,10 +172,15 @@ module data_ram #(
         ram.waddr = writer_pointer.q;
         ram.write_data = LOSE_COLOR;
         writer_pointer.d = writer_pointer.q + 1; 
-        if (&writer_pointer.q){
+       if (&writer_pointer.q){
           writer.d =writer.IDLE;
             writer_pointer.d = 0;
             update_flag.d = 0;}
+        /*if (&writer_pointer.q){
+        writer.d = writer.LOSE;     
+        ram.raddr = address;
+        out_encoding = ram.read_data;
+        running = 0;}*/
           
         
         debug_data = b110;
@@ -209,5 +221,6 @@ module data_ram #(
       
     }
     
-  }}
+  }
+    }
 }
