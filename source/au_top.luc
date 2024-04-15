@@ -10,6 +10,14 @@ module au_top (
     output io_seg [8],      // 7-segment LEDs on IO Shield
     output io_sel [4],      // Digit select on IO Shield
     input io_button [5],    // 5 buttons on IO Shield
+    
+    input start,
+    
+    input p1_up,
+    input p1_down,
+    input p1_left,
+    input p1_right,
+    
     input p2_up,
     input p2_down,
     input p2_left,
@@ -107,14 +115,14 @@ module au_top (
     alU2.a = 0;
     alU2.b =0;
 
-    p1_movement_button.in = c{io_button[4], io_button[3], io_button[2], io_button[0]}; // right, left, down, up
+    p1_movement_button.in = c{p1_right, p1_left, p1_down, p1_up}; // right, left, down, up
     p1_movement_button_edge.in = p1_movement_button.out;
     
     p2_movement_button.in = c{p2_right, p2_left, p2_down, p2_up}; // right, left, down, up
     p2_movement_button_edge.in = p2_movement_button.out;
     
     
-    start_button.in = io_button[1]; // use this button to load map
+    start_button.in = start; // use this button to load map
     start_button_edge.in = start_button.out;
     
     ///////////////////player 1 movement////////////////////////////////////////////////////////////
@@ -169,33 +177,52 @@ module au_top (
     ///////////////////p1 movement end//////////////////////////////////////////////////////////////
     
     ///////////////////player 2 movement////////////////////////////////////////////////////////////
-    if (p2_movement_button_edge.out[0]){
-      // clamp at 0
-      if (|p2_y_pos.q){
-         p2_y_pos.d = p2_y_pos.q - 1; // up (because up decreases y coordinate in the ram_p1)
+    if (p2_movement_button_edge.out[0]){ //up
+      alU2.alufn_signal = b011110; //OR
+      alU2.a = p2_y_pos.q;
+      alU2.b = 0;   
+      if (alU2.out){ //y is not 0 -> can move up
+          alU.alufn_signal = b000001; //SUB (because up decreases y coordinate in the ram_p1)
+          alU.a = p2_y_pos.q;
+          alU.b = 1;
+         p2_y_pos.d = alU.out[1:0];
       }
     }
     
     if (p2_movement_button_edge.out[1]){
-      // clamp 
-      if (p2_y_pos.q < COLUMN_DIMENSION-1){
-      p2_y_pos.d = p2_y_pos.q + 1; // down (because down increases y coordinate in the ram_p1
+      alU2.alufn_signal = b110101; //CMPLT
+      alU2.a = p2_y_pos.q;
+      alU2.b = COLUMN_DIMENSION-1;
+      if (alU2.out){ //player_y_pos.q < 3 can move down
+          alU.alufn_signal = b000000; //ADD (because down increases y coordinate in the ram_p2
+          alU.a = p2_y_pos.q;
+          alU.b = 1;
+          p2_y_pos.d = alU.out[1:0];
       }
     }
     
     if (p2_movement_button_edge.out[2]){ // io_button[3]
-      // clamp 
-      if (|p2_x_pos.q){ ////player_x_pos.q not 0 can move left
-        p2_x_pos.d = p2_x_pos.q - 1; // left (check the orientation of your own matrix)
+      alU2.alufn_signal = b011110; //OR
+      alU2.a = p2_x_pos.q;
+      alU2.b = 0;   
+      if (alU2.out){ //player_x_pos.q not 0 can move left
+          alU.alufn_signal = b000001; //SUB
+          alU.a = p2_x_pos.q;
+          alU.b = 1;
+          p2_x_pos.d = alU.out[1:0];
       }
     }
     if (p2_movement_button_edge.out[3]){ // io_button[4]
-      // clamp at 0 
-      //if (|player_x_pos.q){
-      if (p2_x_pos.q < COLUMN_DIMENSION-1){ //player_x_pos.q < 3 can move right
-        p2_x_pos.d = p2_x_pos.q + 1; // right (check the orientation of your own matrix)
+      alU2.alufn_signal = b110101; //CMPLT
+      alU2.a = p2_x_pos.q;
+      alU2.b = COLUMN_DIMENSION-1;
+      if (alU2.out){ //player_x_pos.q < 3 can move right
+          alU.alufn_signal = b000000; //ADD
+          alU.a = p2_x_pos.q;
+          alU.b = 1;
+          p2_x_pos.d = alU.out[1:0];
       }
-    }
+    } 
     ///////////////////p2 movement end///////////////////////////////////////////////////////////////
 
     
@@ -318,8 +345,7 @@ module au_top (
             }
         
            if(ram_p1.clear_to_au){
-            state.d = state.UPDATE_RAM_P1;
-                 
+            state.d = state.UPDATE_RAM_P1;        
           }
             led[2:0] = b100;
         
@@ -367,11 +393,8 @@ module au_top (
           p2_y_pos.d =b11;}
               else if (rom_address.q == 2){
           p2_x_pos.d =b11;
-          p2_y_pos.d =b00;}
-   
-        }
-        
-            
+          p2_y_pos.d =b00;}   
+        }  
         led[2:0] = b101;
 
         // test reverser 
@@ -381,33 +404,20 @@ module au_top (
     led_strip_p2.color = LEDCOLOR[ram_p2.out_encoding]; 
     led_strip_p1.color = LEDCOLOR[ram_p1.out_encoding];
       
-    if (ram_p1.i_lost){
+    if (ram_p1.i_lost | ram_p2.i_won){
     led_strip_p1.update =1;
     led_strip_p2.update =1;
     led_strip_p1.color = LEDCOLOR[b01]; //01 is red
     led_strip_p2.color =  LEDCOLOR[b10]; //10 is green 
-    
     } 
     
-    if(ram_p2.i_won){
+    if (ram_p1.i_won|ram_p2.i_lost){
     led_strip_p1.update =1;
     led_strip_p2.update =1;
-    led_strip_p1.color = LEDCOLOR[b01]; //01 is red
-    led_strip_p2.color =  LEDCOLOR[b10]; //10 is green
-      }
+    led_strip_p1.color = LEDCOLOR[b10]; //10 is green
+    led_strip_p2.color = LEDCOLOR[b01]; //01 is red
+    }
     
-    if (ram_p1.i_won){
-    led_strip_p1.update =1;
-    led_strip_p2.update =1;
-    led_strip_p1.color = LEDCOLOR[b10]; //10 is green
-    led_strip_p2.color = LEDCOLOR[b01];} //01 is red
-      
-    if (ram_p2.i_lost){
-    led_strip_p1.update =1;
-    led_strip_p2.update =1;
-    led_strip_p1.color = LEDCOLOR[b10]; //10 is green
-    led_strip_p2.color =  LEDCOLOR[b01];} //01 is red
-      
     outled = led_strip_p1.led;
     outled2 = led_strip_p2.led;
     

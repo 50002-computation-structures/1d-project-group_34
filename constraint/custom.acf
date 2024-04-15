@@ -16,10 +16,16 @@ pin led[7] LED7;
 pin usb_rx USB_TX;
 pin usb_tx USB_RX;
 
-pin outled C40;
+pin outled D12;
 pin outled2 D11;
 
-//pin start_button 
+pin start C3 pulldown;
+
+pin p1_up C43 pulldown;
+pin p1_down C42 pulldown;
+pin p1_left C8 pulldown;
+pin p1_right C9 pulldown;
+
 pin p2_up C46 pulldown;
 pin p2_down C45 pulldown;
 pin p2_left C5 pulldown;
