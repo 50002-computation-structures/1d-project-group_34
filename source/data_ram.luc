@@ -42,6 +42,11 @@ module data_ram #(
   const PLAYER_COLOR = b11;
   const LOSE_COLOR = b01;
   const WIN_COLOR = b10; 
+  
+  alu alU;
+  alu alU2;
+  alu alU3;
+  
   map_rom mapRom;
   simple_dual_ram ram(.rclk(clk), .wclk(clk), #DEPTH(DEPTH), #SIZE($clog2(ENCODING_AMOUNT)));
   
@@ -54,6 +59,18 @@ module data_ram #(
     clear_to_au = 0;
     i_lost =0;
     i_won =0;
+    
+    alU.alufn_signal =0;
+    alU.a = 0;
+    alU.b =0;
+    
+    alU2.alufn_signal =0;
+    alU2.a = 0;
+    alU2.b =0;
+    
+    alU3.alufn_signal =0;
+    alU3.a = 0;
+    alU3.b =0;
 
     out_encoding = 0;
     debug_data = 0;
@@ -86,16 +103,26 @@ module data_ram #(
         ram.write_en = b1; 
         ram.waddr = writer_pointer.q;
         ram.write_data = mapRom.out_encoding[writer_pointer.q];
-        writer_pointer.d = writer_pointer.q + 1; 
-          clear_flag.d = 1; //clear 
-          debug_data = b001;
-          
-          i_lost =0;
-          i_won =0;
+        alU.alufn_signal = b000000; //ADD
+        alU.a = writer_pointer.q;
+        alU.b = 1;
+        writer_pointer.d = alU.out[3:0];
+        //writer_pointer.d = writer_pointer.q + 1; 
+        clear_flag.d = 1; //clear 
+        debug_data = b001;      
+        i_lost =0;
+        i_won =0;
         if (&writer_pointer.q){
           debug_data = b001;
           counter.d = 0;
-          writer_pointer.d =player_y_pos*4 + player_x_pos; //to prevent erase at wrong place
+          alU2.alufn_signal =b100000; //SHL
+          alU2.a = player_y_pos;
+          alU2.b = 2; //shift by 2 bits = *4
+          alU3.alufn_signal = b000000; //ADD
+          alU3.a = alU2.out;
+          alU3.b = player_x_pos;
+          writer_pointer.d = alU3.out[3:0];       
+          //writer_pointer.d =player_y_pos*4 + player_x_pos; //to prevent erase at wrong place
           writer.d=writer.IDLE; //does the position of this line of code matter? NO
         }
           
@@ -104,14 +131,24 @@ module data_ram #(
           ram.write_en = b1; 
           ram.waddr = writer_pointer.q;
           ram.write_data = BACKGROUND_COLOR; 
-          writer_pointer.d = writer_pointer.q + 1; 
+          alU.alufn_signal = b000000; //ADD
+          alU.a = writer_pointer.q;
+          alU.b = 1;
+          writer_pointer.d = alU.out[3:0];
+          //writer_pointer.d = writer_pointer.q + 1; 
           debug_data = b010;  
           clear_flag.d = 0;
           if (&writer_pointer.q){
               clear_to_au = 1;
               debug_data = b010; 
               writer.d = writer.WRITE;
-              writer_pointer.d =player_y_pos*4 + player_x_pos;
+              alU2.alufn_signal =b100000; //SHL
+              alU2.a = player_y_pos;
+              alU2.b = 2; //shift by 2 bits = *4
+              alU3.alufn_signal = b000000; //ADD
+              alU3.a = alU2.out;
+              alU3.b = player_x_pos;
+              writer_pointer.d = alU3.out[3:0];
                 } 
     
       writer.ERASE: 
@@ -119,7 +156,14 @@ module data_ram #(
         ram.waddr = writer_pointer.q; // this is old player address 
         ram.write_data = BACKGROUND_COLOR; // set back to background color 
         writer.d = writer.WRITE;
-        writer_pointer.d = player_y_pos*4 + player_x_pos; // update player position
+        alU2.alufn_signal =b100000; //SHL
+        alU2.a = player_y_pos;
+        alU2.b = 2; //shift by 2 bits = *4
+        alU3.alufn_signal = b000000; //ADD
+        alU3.a = alU2.out;
+        alU3.b = player_x_pos;
+        writer_pointer.d = alU3.out[3:0];
+        //writer_pointer.d = player_y_pos*4 + player_x_pos; // update player position
         debug_data = b011;
            
       writer.WRITE:
@@ -168,7 +212,7 @@ module data_ram #(
         }
 
         if(clear_flag.q){
-          counter.d = counter.q + 1;
+        counter.d = counter.q + 1;
           if (&counter.q){
            writer_pointer.d =0;
           writer.d = writer.CLEAR;}
