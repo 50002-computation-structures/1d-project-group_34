@@ -243,7 +243,7 @@ module au_top (
       alU2.b = 2;
       if (alU2.out){  
       //if (rom_address.q < 2){
-      alU.alufn_signal = b000000; //ADD (because down increases y coordinate in the ram_p1
+      alU.alufn_signal = b000000; //ADD (because down increases y coordinate in the ram_p1)
       alU.a = rom_address.q;
       alU.b = 1;
       rom_address.d = alU.out[1:0];}       
