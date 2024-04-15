@@ -33,12 +33,13 @@ module au_top (
 
   dff rom_address[$clog2(ROW_DIMENSION)](.clk(clk), #INIT(1), .rst(rst));
 
-
-  // the data_ram_p1, this is a custom data_ram_p1 for demonstration purposes
-  // along with custom "player location"
+  //the data_ram takes care of movement and checking the position
   data_ram ram_p1(#ROW_DIMENSION(ROW_DIMENSION), #ENCODING_AMOUNT(ENCODING_AMOUNT), #COLUMN_DIMENSION(COLUMN_DIMENSION), .clk(clk), .rst(rst));
   data_ram ram_p2(#ROW_DIMENSION(ROW_DIMENSION), #ENCODING_AMOUNT(ENCODING_AMOUNT), #COLUMN_DIMENSION(COLUMN_DIMENSION), .clk(clk), .rst(rst));
-
+  
+  alu alU; //i add alu
+  alu alU2; //i add alu
+  
   // 0,0 is at the top left of LED matrix: Check this with your matrix orientation
   // right ---> x ++
   // left ---> x -- 
@@ -54,9 +55,6 @@ module au_top (
   dff update_ram_p2_flag(.clk(clk), #INIT(0), .rst(rst));
   dff start_ram_p2_flag(.clk(clk), #INIT(0), .rst(rst));
 
-  
-
-  
   ws2812b_writer led_strip_p1(#PIXEL_COUNT(PIXEL_COUNT), .clk(clk), .rst(rst)); 
   ws2812b_writer led_strip_p2(#PIXEL_COUNT(PIXEL_COUNT), .clk(clk), .rst(rst)); 
   
@@ -100,13 +98,15 @@ module au_top (
     ram_p2.clear =0;
     
     led_strip_p1.color = LEDCOLOR[b11];
+    
+    alU.alufn_signal =0;
+    alU.a = 0;
+    alU.b =0;
+    
+    alU2.alufn_signal =0;
+    alU2.a = 0;
+    alU2.b =0;
 
-    /*ram_p1.u_lost=0;
-    ram_p1.u_won=0;
-    ram_p2.u_lost=0;
-    ram_p2.u_won=0;*/
-    
-    
     p1_movement_button.in = c{io_button[4], io_button[3], io_button[2], io_button[0]}; // right, left, down, up
     p1_movement_button_edge.in = p1_movement_button.out;
     
@@ -117,36 +117,58 @@ module au_top (
     start_button.in = io_button[1]; // use this button to load map
     start_button_edge.in = start_button.out;
     
+    ///////////////////player 1 movement////////////////////////////////////////////////////////////
     // the matrix we use has top left as 0,0
     // check player movement update 
-    if (p1_movement_button_edge.out[0]){
-      // clamp at 0
-      if (|p1_y_pos.q){
-         p1_y_pos.d = p1_y_pos.q - 1; // up (because up decreases y coordinate in the ram_p1)
+    if (p1_movement_button_edge.out[0]){ //up
+      alU2.alufn_signal = b011110; //OR
+      alU2.a = p1_y_pos.q;
+      alU2.b = 0;   
+      if (alU2.out){ //y is not 0 -> can move up
+          alU.alufn_signal = b000001; //SUB (because up decreases y coordinate in the ram_p1)
+          alU.a = p1_y_pos.q;
+          alU.b = 1;
+         p1_y_pos.d = alU.out[1:0];
       }
     }
     
     if (p1_movement_button_edge.out[1]){
-      // clamp 
-      if (p1_y_pos.q < COLUMN_DIMENSION-1){
-      p1_y_pos.d = p1_y_pos.q + 1; // down (because down increases y coordinate in the ram_p1
+      alU2.alufn_signal = b110101; //CMPLT
+      alU2.a = p1_y_pos.q;
+      alU2.b = COLUMN_DIMENSION-1;
+      if (alU2.out){ //player_y_pos.q < 3 can move down
+          alU.alufn_signal = b000000; //ADD (because down increases y coordinate in the ram_p1
+          alU.a = p1_y_pos.q;
+          alU.b = 1;
+          p1_y_pos.d = alU.out[1:0];
       }
     }
     
     if (p1_movement_button_edge.out[2]){ // io_button[3]
-      // clamp 
-      if (|p1_x_pos.q){ ////player_x_pos.q not 0 can move left
-        p1_x_pos.d = p1_x_pos.q - 1; // left (check the orientation of your own matrix)
+      alU2.alufn_signal = b011110; //OR
+      alU2.a = p1_x_pos.q;
+      alU2.b = 0;   
+      if (alU2.out){ //player_x_pos.q not 0 can move left
+          alU.alufn_signal = b000001; //SUB
+          alU.a = p1_x_pos.q;
+          alU.b = 1;
+          p1_x_pos.d = alU.out[1:0];
       }
     }
     if (p1_movement_button_edge.out[3]){ // io_button[4]
-      // clamp at 0 
-      //if (|player_x_pos.q){
-      if (p1_x_pos.q < COLUMN_DIMENSION-1){ //player_x_pos.q < 3 can move right
-        p1_x_pos.d = p1_x_pos.q + 1; // right (check the orientation of your own matrix)
+      alU2.alufn_signal = b110101; //CMPLT
+      alU2.a = p1_x_pos.q;
+      alU2.b = COLUMN_DIMENSION-1;
+      if (alU2.out){ //player_x_pos.q < 3 can move right
+          alU.alufn_signal = b000000; //ADD
+          alU.a = p1_x_pos.q;
+          alU.b = 1;
+          p1_x_pos.d = alU.out[1:0];
       }
-    }
-    //player 2 movement//////////////////////////////////////////////////////////////////////////////////////////////////
+    } 
+    ///////////////////p1 movement end//////////////////////////////////////////////////////////////
+    
+    ///////////////////player 2 movement////////////////////////////////////////////////////////////
     if (p2_movement_button_edge.out[0]){
       // clamp at 0
       if (|p2_y_pos.q){
@@ -174,7 +196,7 @@ module au_top (
         p2_x_pos.d = p2_x_pos.q + 1; // right (check the orientation of your own matrix)
       }
     }
-    ///////////////p2 movement end///////////////////////////////////////////////////////////////////
+    ///////////////////p2 movement end///////////////////////////////////////////////////////////////
 
     
     // update the flag 
@@ -187,11 +209,18 @@ module au_top (
     }
         //what i add
     if (start_button_edge.out){
-       start_ram_p1_flag.d = 1;
+      start_ram_p1_flag.d = 1;
       start_ram_p2_flag.d = 1;
-      //CMPEQ input a: rom_address.q, b:2//output 1 or 0
-      if (rom_address.q < 2){
-      rom_address.d = rom_address.q + 1;}
+      alU2.alufn_signal = b110101; //CMPLT
+      alU2.a = rom_address.q;
+      alU2.b = 2;
+      if (alU2.out){  
+      //if (rom_address.q < 2){
+      alU.alufn_signal = b000000; //ADD (because down increases y coordinate in the ram_p1
+      alU.a = rom_address.q;
+      alU.b = 1;
+      rom_address.d = alU.out[1:0];}       
+      //rom_address.d = rom_address.q + 1;}
       else{rom_address.d =0;}
     }
     ram_p1.start = 0; // what i add
@@ -238,7 +267,6 @@ module au_top (
                 state.d = state.REFRESH_P1;
                 ram_p1.address = index_reverser1.effective_pixel_address;
                 led_strip_p1.update = 1;
-
               }
         
         led[2:0] = b001;
@@ -252,9 +280,6 @@ module au_top (
                   state.d = state.REFRESH_P2;
                   ram_p2.address = index_reverser2.effective_pixel_address;
                   led_strip_p2.update = 1;
-                  
-          
-          
                 }
         
         led[2:0] = b010;
@@ -262,27 +287,19 @@ module au_top (
       state.REFRESH_P1:
             // if at the last FPGA clock cycle for this bit, advance the address first because our ram_p1 needs 1 additional clock cycle to work
             if (led_strip_p1.next_pixel){
-              index_reverser1.original_pixel_address = led_strip_p1.pixel_address + 1;
+              alU.alufn_signal = b000000; //ADD
+              alU.a = led_strip_p1.pixel_address;
+              alU.b = 1;
+              index_reverser1.original_pixel_address = alU.out[3:0];
             }
       
             // pass this to ram_p1 
             ram_p1.address = index_reverser1.effective_pixel_address;
-        
-            //if(start_ram_p2_flag.q){ //does this work?
-                //state.d = state.UPDATE_RAM_P2;}
-        
-            /*if(ram_p2.clear_to_au){ //does this position work? still p1 clear but p2 doesnt clear
-                state.d = state.UPDATE_RAM_P2;}*/
            
             // wait until we are all done in updating our LED;
             if (led_strip_p1.done){ //seeing if it goes to UPDATE_RAM_P2? 
                 state.d = state.IDLE;
             }
-           //if(ram_p2.clear_to_au){ //does this position work? it makes p1 clear but not p2
-                //state.d = state.UPDATE_RAM_P2;}
-          /*  if(ram_p2.i_lost|ram_p2.i_won){
-            state.d = state.UPDATE_RAM_P2;  }*/
-        
         
             led[2:0] = b011;
         
@@ -301,20 +318,22 @@ module au_top (
             }
         
            if(ram_p1.clear_to_au){
-            state.d = state.UPDATE_RAM_P1;  
-          //ram_p2.clear =1;
+            state.d = state.UPDATE_RAM_P1;
                  
           }
-            /*if(ram_p1.i_lost|ram_p1.i_won){
-            state.d = state.UPDATE_RAM_P1;  }*/
             led[2:0] = b100;
         
      state.IDLE:
-        //if (ram_p1.running){
+        //if (ram_p1.running)
         state.d = state.IDLE;
+        if(~(ram_p1.i_lost|ram_p1.i_won|ram_p2.i_lost|ram_p2.i_won)){ //does this stop the player from moving
         if (update_ram_p1_flag.q){ // if there's movement update
             state.d = state.UPDATE_RAM_P1;
-            ram_p1.update = 1;  // send update signal to ram_p1 first, dont clear the update flag yet 
+            ram_p1.update = 1;}
+        if (update_ram_p2_flag.q){ // if there's movement update
+        state.d = state.UPDATE_RAM_P2;
+        ram_p2.update = 1;}  // send update signal to ram_p1 first, dont clear the update flag yet 
+          }  // send update signal to ram_p1 first, dont clear the update flag yet 
           
         if (start_ram_p1_flag.q){ //what i add
             state.d = state.UPDATE_RAM_P1;
@@ -329,25 +348,14 @@ module au_top (
           p1_x_pos.d =b11;
           p1_y_pos.d =b00;}
    
-        }}
+        }
           if(ram_p1.clear_to_au){
-            state.d = state.UPDATE_RAM_P1;  
-          //ram_p2.clear =1;
-                 
+            state.d = state.UPDATE_RAM_P1;   
           }
           if(ram_p2.clear_to_au){
             state.d = state.UPDATE_RAM_P2;
           ram_p1.clear =1;}
-          
-         
-
-            
-        //led[1:0] = b01;
-        //if (ram_p2.running){
-        if (update_ram_p2_flag.q){ // if there's movement update
-            state.d = state.UPDATE_RAM_P2;
-            ram_p2.update = 1;  // send update signal to ram_p1 first, dont clear the update flag yet 
-          
+           
         if (start_ram_p2_flag.q){ //what i add
             state.d = state.UPDATE_RAM_P2;
           ram_p2.start =1;
@@ -361,110 +369,14 @@ module au_top (
           p2_x_pos.d =b11;
           p2_y_pos.d =b00;}
    
-        }}
-       
+        }
         
-        /* if (ram_p1.i_lost | ram_p2.i_won){ //try again
-    led_strip_p1.color=LEDCOLOR[b11];
-    led_strip_p2.color=LEDCOLOR[b10];
-      led_strip_p1.update =1;
-      led_strip_p2.update =1;
-      if (led_strip_p1.done && led_strip_p2.done){
-      outled = led_strip_p1.led;
-      outled2 = led_strip_p2.led;}
-      }
-      
-    else if(ram_p2.i_lost | ram_p1.i_won){
-    led_strip_p2.color=LEDCOLOR[b01];
-    led_strip_p1.color=LEDCOLOR[b10];
-      led_strip_p1.update =1;
-      led_strip_p2.update =1;
-      if (led_strip_p1.done && led_strip_p2.done){
-      outled = led_strip_p1.led;
-      
-      outled2 = led_strip_p2.led;}
-      }*/
-        
-    
-
-    
-        
-       /*   if(ram_p1.i_won|ram_p2.i_lost){
-        ram_p1.u_lost=1;
-        ram_p2.u_won=1;
-          state.d = state.WAIT;}
-          
-        
-        if(ram_p1.i_lost|ram_p2.i_won){
-        ram_p2.u_lost =1;
-        ram_p1.u_won =1;
-          state.d = state.WAIT;
-         }*/
-       /* if (ram_p1.i_lost || ram_p2.i_won){
-        led_strip_p1.color=LEDCOLOR[b01];
-        led_strip_p2.color=LEDCOLOR[b10];
-          outled = led_strip_p1.led;
-          outled2 = led_strip_p2.led;
-          state.d = state.q;}
-          
-        if (ram_p2.i_lost || ram_p1.i_won){
-        led_strip_p2.color=LEDCOLOR[b01];
-        led_strip_p1.color=LEDCOLOR[b10];
-          outled = led_strip_p1.led;
-          outled2 = led_strip_p2.led;
-          state.d = state.q;}*/
-           
-      /*state.WAIT:
-        state.d = state.UPDATE_RAM_P2;
-        */ 
-
-          
-                              
-
             
         led[2:0] = b101;
 
         // test reverser 
         index_reverser1.original_pixel_address = ram_p1.debug_address_pointer;
-
     }
-
-
-
-    /*led_strip_p1.color = LEDCOLOR[ram_p1.out_encoding]; 
-    //led_strip_p1.color = LEDCOLOR[01]; //try if this affects anything, always show all red YES
-    outled = led_strip_p1.led;
-    
-    led_strip_p2.color = LEDCOLOR[ram_p2.out_encoding]; 
-    outled2 = led_strip_p2.led;*/
-    
-    /*led_strip_p1.color = LEDCOLOR[ram_p1.out_encoding]; 
-    //led_strip_p1.color = LEDCOLOR[01]; //try if this affects anything, always show all red YES
-    outled = led_strip_p1.led;
-    
-    led_strip_p2.color = LEDCOLOR[ram_p2.out_encoding]; 
-    outled2 = led_strip_p2.led;*/
-    
-    /*if (ram_p1.i_lost | ram_p2.i_won){ //try again
-    led_strip_p1.color=LEDCOLOR[b11];
-    led_strip_p2.color=LEDCOLOR[b10];
-      led_strip_p1.update =1;
-      led_strip_p2.update =1;
-      if (led_strip_p1.done && led_strip_p2.done){
-      outled = led_strip_p1.led;
-      outled2 = led_strip_p2.led;}
-      }
-      
-    else if(ram_p2.i_lost | ram_p1.i_won){
-    led_strip_p2.color=LEDCOLOR[b01];
-    led_strip_p1.color=LEDCOLOR[b10];
-      led_strip_p1.update =1;
-      led_strip_p2.update =1;
-      if (led_strip_p1.done && led_strip_p2.done){
-      outled = led_strip_p1.led;
-      
-      outled2 = led_strip_p2.led;}
-      }*/
        
     led_strip_p2.color = LEDCOLOR[ram_p2.out_encoding]; 
     led_strip_p1.color = LEDCOLOR[ram_p1.out_encoding];
@@ -498,6 +410,7 @@ module au_top (
       
     outled = led_strip_p1.led;
     outled2 = led_strip_p2.led;
+    
     // debug 
     io_led[0] = c{p1_y_pos.q, p1_x_pos.q};
    
@@ -507,7 +420,6 @@ module au_top (
     io_led[2][7] = update_ram_p1_flag.q;
     led[7:5] = ram_p1.debug_data;
     
-    //led[3] = led_strip_p1.reset;
     
 }
 }
