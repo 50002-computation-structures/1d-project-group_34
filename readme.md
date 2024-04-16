@@ -116,6 +116,3 @@ Winning: The first player to reach the finishing zone without touching any of th
 
 ### reverser.luc:
 - Reverses every odd-numbered row, used for matrix manipulation.
-
-### alu.luc, adder.luc, boolean.luc, compare.luc:
-- Explained in the ALU section above.
