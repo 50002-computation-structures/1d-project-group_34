@@ -21,6 +21,8 @@ Justin Cho      1007496
 
 This project is a PvP arcade game where two players compete on a 4x4 grid to reach the goal first. Each player controls their position with four buttons: up, down, left, and right. Player positions are represented by white LEDs, restricted paths by red LEDs, and the goal by a green LED. There are three maps; pressing start transitions to the next map, briefly flashing it on both screens for one second before disappearing. Players must memorize each map quickly, navigating to the goal while avoiding restricted paths. The first to reach the goal wins; if the opponent wins, you lose automatically.
 
+![image](https://github.com/50002-computation-structures/1d-project-group_34/assets/117970574/4d5e61b3-d2ff-4659-baa8-39e15827bf66)
+
 #### User Manual
 Here's a step-by-step instruction set on how to play "Memory Maze: Grid Escape":  
 
