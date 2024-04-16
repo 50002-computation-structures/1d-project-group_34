@@ -119,7 +119,3 @@ Winning: The first player to reach the finishing zone without touching any of th
 
 ### alu.luc, adder.luc, boolean.luc, compare.luc:
 - Explained in the ALU section above.
-
-### Other Details
-
-Any other details
