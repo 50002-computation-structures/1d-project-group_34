@@ -1,5 +1,5 @@
 [![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-24ddc0f5d75046c5622901739e7c5dd533143b0c8e959d652212380cedb1ea36.svg)](https://classroom.github.com/a/5YTzVbxp)
-## 50.002 1D Project Group (Group_34)
+# 50.002 1D Project Group (Group_34)
 
 ### Group Members
 
@@ -36,9 +36,9 @@ Navigation: Players use 4 buttons to move left, right, up, or down on the grid. 
 
 Winning: The first player to reach the finishing zone without touching any of the restricted grids wins the game. The other player automatically loses.
 
-### Modules Overview
+## Modules Overview
 
-#### au_top.luc:
+### au_top.luc:
 **Inputs and Outputs:**
 - Inputs: Clock, reset, button inputs, etc.
 - Outputs: User-controllable LEDs, LED strips, IO shield signals, etc.
@@ -69,7 +69,7 @@ Winning: The first player to reach the finishing zone without touching any of th
 **Debugging and I/O:**
 - Provides debugging information such as LED colors, player positions, RAM addresses, etc.
 
-#### data_ram.luc:
+### data_ram.luc:
 **Inputs and Outputs:**
 - Inputs: Clock, reset, player positions, address, update signals, start signal, clear signal, map number, etc.
 - Outputs: Encoded map data, ready flag, clear signal, game end flags, debug information, etc.
@@ -94,7 +94,7 @@ Winning: The first player to reach the finishing zone without touching any of th
 **Debugging:**
 - Provides debug information such as RAM addresses, data pointers, and game state flags.
 
-#### map_rom.luc:
+### map_rom.luc:
 **Inputs:**
 - map_num[2]: A 2-bit input representing the selected map number.
 
@@ -109,13 +109,13 @@ Winning: The first player to reach the finishing zone without touching any of th
 - Depending on the value of map_num, the corresponding ROM (MAP_0_ROM, MAP_1_ROM, or MAP_2_ROM) is assigned to the out_encoding output.
 - If the map_num input does not match any of the specified cases, MAP_0_ROM is assigned by default.
 
-#### ws2812b_writer.luc:
+### ws2812b_writer.luc:
 - Serves as a bridge between the FPGA and WS2812B LEDs.
 
-#### reverser.luc:
+### reverser.luc:
 - Reverses every odd-numbered row, used for matrix manipulation.
 
-#### alu.luc, adder.luc, boolean.luc, compare.luc:
+### alu.luc, adder.luc, boolean.luc, compare.luc:
 - Explained in the ALU section above.
 
 ### Other Details
