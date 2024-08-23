@@ -38,6 +38,8 @@ Navigation: Players use 4 buttons to move left, right, up, or down on the grid. 
 
 Winning: The first player to reach the finishing zone without touching any of the restricted grids wins the game. The other player automatically loses.
 
+Game Demo: https://youtu.be/AEitflaGopE
+
 ## Modules Overview
 
 ### au_top.luc:
